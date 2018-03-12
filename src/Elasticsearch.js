@@ -8,7 +8,7 @@ export default class Elasticsearch {
     });
   }
 
-  bulkIndex() {
+  bulkIndex(index, type, data) {
     let bulkBody = [];
 
     data.forEach(item => {
