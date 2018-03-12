@@ -1,0 +1,51 @@
+{
+  "name": "parr",
+  "version": "0.0.1",
+  "main": "lib/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hillstreetlabs/parr.git"
+  },
+  "scripts": {
+    "build": "npm run build:clean && npm run build:lib",
+    "build:clean": "rm -rf lib",
+    "build:lib": "babel src --out-dir lib",
+    "prepare": "NODE_ENV=production npm run build",
+    "lint": "eslint --fix src/"
+  },
+  "author": "Hill Street Labs",
+  "contributors": [
+    "Feridun Mert Celebi <mertcelebi93@gmail.com> (https://github.com/mertcelebi)"
+  ],
+  "bugs": {
+    "url": "https://github.com/hillstreetlabs/parr/issues"
+  },
+  "homepage": "https://github.com/hillstreetlabs/parr",
+  "dependencies": {
+    "elasticsearch": "^14.1.0",
+    "ethereumjs-blockstream": "^4.0.1",
+    "isomorphic-fetch": "^2.2.1"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.0",
+    "babel-eslint": "^8.2.2",
+    "babel-loader": "^7.1.4",
+    "babel-plugin-transform-decorators-legacy": "^1.3.4",
+    "babel-plugin-transform-runtime": "^6.23.0",
+    "babel-preset-env": "^1.6.1",
+    "babel-preset-es2015": "^6.24.1",
+    "babel-preset-react": "^6.24.1",
+    "babel-preset-stage-2": "^6.24.1",
+    "babel-preset-stage-3": "^6.24.1",
+    "eslint": "^4.18.2",
+    "eslint-config-standard": "^11.0.0",
+    "eslint-config-standard-react": "^6.0.0",
+    "eslint-plugin-babel": "^4.1.2",
+    "eslint-plugin-import": "^2.9.0",
+    "eslint-plugin-node": "^6.0.1",
+    "eslint-plugin-promise": "^3.7.0",
+    "eslint-plugin-react": "^7.7.0",
+    "eslint-plugin-standard": "^3.0.1"
+  }
+}
