@@ -1,6 +1,6 @@
 # parr :mag:
 
-Index the ~entire~ Ethereum blockchain to search more intelligently.
+Index the Ethereum blockchain to search more intelligently.
 
 The name is inspired by the great [Helen Parr](https://www.youtube.com/watch?v=9svuQXc-gBQ) (aka Elastigirl).
 
