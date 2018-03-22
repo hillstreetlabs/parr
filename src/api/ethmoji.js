@@ -15,7 +15,7 @@ export default ({ config, db }) => {
   api.use("/:transactionId", async (req, res) => {
     const tx = await db.web3.getTransactionReceipt(req.params.transactionId);
     const logs = decoder(tx.logs);
-    res.json({ logs });
+    res.json({ tx, logs });
   });
 
   return api;
