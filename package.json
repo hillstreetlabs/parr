@@ -23,6 +23,7 @@
     "elasticsearch": "^14.2.1",
     "ethereumjs-blockstream": "^4.0.1",
     "ethjs": "^0.3.3",
+    "ethmoji-contracts": "^1.0.4",
     "express": "^4.13.3",
     "isomorphic-fetch": "^2.2.1",
     "morgan": "^1.8.0",

@@ -8,6 +8,11 @@ export default ({ config, db }) => {
   // mount the facets resource
   api.use("/facets", facets({ config, db }));
 
+  api.use("/accounts/:accountId", async (req, res) => {
+    const balance = await db.web3.getBalance(req.params.accountId);
+    res.json({ address: req.params.accountId, balance });
+  });
+
   api.use("/accounts", async (req, res) => {
     const accounts = await db.web3.accounts();
     res.json({ accounts });
@@ -18,6 +23,11 @@ export default ({ config, db }) => {
     res.json({ block });
   });
 
+  api.use("/transactions/:transactionId", async (req, res) => {
+    const tx = await db.web3.getTransactionReceipt(req.params.transactionId);
+    res.json({ tx });
+  });
+
   api.post("/search", async (req, res) => {
     const query = await db.elasticsearch.search(req.params);
     res.json({ query });
@@ -26,7 +36,6 @@ export default ({ config, db }) => {
   // perhaps expose some API metadata at the root
   api.get("/", (req, res) => {
     const { elasticsearch, web3 } = db;
-    console.log(elasticsearch);
     const provider = web3.currentProvider;
     res.json({ version, provider });
   });
