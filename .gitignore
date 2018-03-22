@@ -1,5 +1,15 @@
-/dist
-/logs
-/npm-debug.log
-/node_modules
+# Logs
+logs
+*.log
+npm-debug.log
+yarn-error.log
+
+# OSX
 .DS_Store
+
+.env
+node_modules
+yarn.lock
+
+lib
+dist
