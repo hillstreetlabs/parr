@@ -1,9 +1,6 @@
 import Eth from "ethjs";
 import Elasticsearch from "elasticsearch";
 
-// Contracts
-import { Ethmoji } from "ethmoji-contracts";
-
 export default callback => {
   const web3 = new Eth(
     new Eth.HttpProvider(

@@ -17,6 +17,7 @@
   ],
   "dependencies": {
     "body-parser": "^1.13.3",
+    "commander": "^2.15.1",
     "compression": "^1.5.2",
     "cors": "^2.7.1",
     "dotenv": "^5.0.1",
