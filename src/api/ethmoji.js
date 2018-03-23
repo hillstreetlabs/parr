@@ -14,18 +14,21 @@ export default ({ config, db }) => {
   const decoder = Eth.abi.logDecoder(ethmoji.abi);
 
   api.use("/earnings/:address", async (req, res) => {
-    const internals = await db.etherscan.account.txlistinternal(
+    const response = await db.etherscan.account.txlistinternal(
       null,
       req.params.address,
       0
     );
-    const balance = internals.result
-      .map(tx => new BN(tx.value))
-      .reduce((agg, val) => agg.add(val));
+    const payments = response.result
+      .map(tx => {
+        if (tx.from == ethmoji.address) return new BN(tx.value);
+      })
+      .filter(n => n);
+    const balance = payments.reduce((agg, val) => agg.add(val));
     res.json({
       address: req.params.address,
       balance: Eth.fromWei(balance, "ether"),
-      internals: internals.result
+      count: payments.length
     });
   });
 
