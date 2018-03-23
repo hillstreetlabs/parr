@@ -3,6 +3,7 @@ import Eth from "ethjs";
 import { Router } from "express";
 import { Ethmoji } from "ethmoji-contracts";
 import Etherscan from "etherscan-api";
+import BN from "bn.js";
 
 export default ({ config, db }) => {
   let api = Router();
@@ -11,6 +12,22 @@ export default ({ config, db }) => {
     .contract(Ethmoji.abi)
     .at("0xa6d954d08877f8ce1224f6bfb83484c7d3abf8e9");
   const decoder = Eth.abi.logDecoder(ethmoji.abi);
+
+  api.use("/earnings/:address", async (req, res) => {
+    const internals = await db.etherscan.account.txlistinternal(
+      null,
+      req.params.address,
+      0
+    );
+    const balance = internals.result
+      .map(tx => new BN(tx.value))
+      .reduce((agg, val) => agg.add(val));
+    res.json({
+      address: req.params.address,
+      balance: Eth.fromWei(balance, "ether"),
+      internals: internals.result
+    });
+  });
 
   api.use("/:transactionId", async (req, res) => {
     const tx = await db.web3.getTransactionReceipt(req.params.transactionId);
