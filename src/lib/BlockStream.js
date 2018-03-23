@@ -43,19 +43,4 @@ const gettersWithWeb3 = nodeEndpoint => ({
   }
 });
 
-const getters = gettersWithWeb3("http://localhost:8545");
-const streamer = new BlockAndLogStreamer(
-  getters.getBlockByHash,
-  getters.getLogs,
-  {
-    blockRetention: 100
-  }
-);
-
-streamer.subscribeToOnBlockAdded(block => {
-  console.log("BLOCK              ", block);
-});
-
-setInterval(async () => {
-  streamer.reconcileNewBlock(await getters.getLatestBlock());
-}, 1000);
+export default gettersWithWeb3;
