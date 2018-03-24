@@ -14,10 +14,13 @@ Before you start working on `parr`, you need to install
 Once done, clone the repo and run `yarn` (or `npm install`) to install all the
 dependencies and start Elasticsearch.
 
-### TODO
+Update your `.env` file according to the following format:
 
-* [x] Read blocks and transactions from the blockchain
-* [x] Index data on Elasticsearch
-* [x] Make sense of block and transaction data
-* [ ] Read logs from the blockchain
-* [ ] Hook everything up
+```
+// .env
+INFURA_NETWORK=mainnet
+INFURA_KEY=<Your Infura API Key>
+ELASTICSEARCH_URL="localhost:9200"
+ETHERSCAN_KEY=<Your Etherscan API Key>
+```
+
