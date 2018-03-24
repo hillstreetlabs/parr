@@ -23,33 +23,29 @@ const ethmoji = eth
   .at("0xa6d954d08877f8ce1224f6bfb83484c7d3abf8e9");
 const decoder = Eth.abi.logDecoder(ethmoji.abi);
 
-function resolveAfter2Seconds() {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      resolve("resolved");
-    }, 2000);
-  });
-}
-
 async function parseBlock(blockNumber) {
   const block = await eth.getBlockByNumber(blockNumber, true);
   const parsedBlock = parser.parseBlock(block);
-  const parsedTransactions = parsedBlock.transactions.map(async txn => {
-    const receipt = await eth.getTransactionReceipt(txn.hash);
-    txn.cumulativeGasUsed = receipt.cumulativeGasUsed.toString(10);
-    txn.gasUsed = receipt.gasUsed.toString(10);
+  parsedBlock.transactions = await Promise.all(
+    parsedBlock.transactions.map(async txn => {
+      const receipt = await eth.getTransactionReceipt(txn.hash);
+      txn.cumulativeGasUsed = receipt.cumulativeGasUsed.toString(10);
+      txn.gasUsed = receipt.gasUsed.toString(10);
 
-    let decoded;
-    try {
-      decoded = decoder(receipt.logs);
-    } catch (error) {
-      decoded = [];
-    }
-    txn.logs = receipt.logs.map((log, index) => {
-      return parser.parseLog(log, decoded[index]);
-    });
-    return txn;
-  });
+      let decoded;
+      try {
+        decoded = decoder(receipt.logs);
+      } catch (error) {
+        decoded = [];
+      }
+      txn.logs = receipt.logs.map((log, index) => {
+        return parser.parseLog(log, decoded[index]);
+      });
+      return txn;
+    })
+  );
+
+  console.log(parsedBlock);
 }
 
 parseBlock(5311100);
