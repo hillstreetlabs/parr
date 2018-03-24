@@ -1,4 +1,6 @@
 require("dotenv").config();
+require("es6-promise").polyfill();
+require("isomorphic-fetch");
 
 import http from "http";
 import express from "express";

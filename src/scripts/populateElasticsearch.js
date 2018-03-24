@@ -2,40 +2,39 @@
 
 require("dotenv").config();
 import Elasticsearch from "elasticsearch";
-import { BlockAndLogStreamer } from "ethereumjs-blockstream";
+import Eth from "ethjs";
 import gettersWithWeb3 from "../lib/BlockStream";
 import Parser from "../lib/parser";
+import { Ethmoji } from "ethmoji-contracts";
 
 const client = new Elasticsearch.Client({
   host: process.env.ELASTICSEARCH_URL,
   log: "trace"
 });
 
+const eth = new Eth(
+  new Eth.HttpProvider(
+    `https://${process.env.INFURA_NETWORK}.infura.io/${process.env.INFURA_KEY}`
+  )
+);
 const parser = new Parser();
-const getters = gettersWithWeb3(
-  `https://${process.env.INFURA_NETWORK}.infura.io/${process.env.INFURA_KEY}`
-);
-const streamer = new BlockAndLogStreamer(
-  getters.getBlockByHash,
-  getters.getLogs,
-  {
-    blockRetention: 100
-  }
-);
+const ethmoji = eth
+  .contract(Ethmoji.abi)
+  .at("0xa6d954d08877f8ce1224f6bfb83484c7d3abf8e9");
+const decoder = Eth.abi.logDecoder(ethmoji.abi);
 
-streamer.subscribeToOnBlockAdded(block => {
-  console.log(parser.parseBlock(block));
-  // console.log("TRANSACTIONS           ", block.result.transactions);
-});
-
-setInterval(async () => {
-  console.log("HERE");
-  streamer.reconcileNewBlock(await getters.getLatestBlock());
-}, 1000);
-
-// // ["blocks", "transactions", "logs", "accounts"].map(async name => {
-// //   const indexName = `parr-${name}`;
-// //   const indexExists = await client.indices.exists({ index: indexName });
-// //   if (indexExists) await client.indices.delete({ index: indexName });
-// //   client.indices.create({ index: indexName });
-// // });
+function parseBlock(blockNumber) {
+  eth.getBlockByNumber(blockNumber, true).then(block => {
+    const parsedBlock = parser.parseBlock(block);
+    parsedBlock.transactions = parsedBlock.transactions.map(txn => {
+      eth.getTransactionReceipt(txn.hash).then(receipt => {
+        txn.cumulativeGasUsed = receipt.cumulativeGasUsed.toString(10);
+        txn.gasUsed = receipt.gasUsed.toString(10);
+        txn.logs = receipt.logs.map(log => {
+          return parser.parseLog(log);
+        });
+      });
+      return txn;
+    });
+  });
+}

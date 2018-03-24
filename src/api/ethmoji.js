@@ -1,7 +1,6 @@
 import { version } from "../../package.json";
 import Eth from "ethjs";
 import { Router } from "express";
-import facets from "./facets";
 import { Ethmoji } from "ethmoji-contracts";
 
 export default ({ config, db }) => {
@@ -15,7 +14,13 @@ export default ({ config, db }) => {
   api.use("/:transactionId", async (req, res) => {
     const tx = await db.web3.getTransactionReceipt(req.params.transactionId);
     const logs = decoder(tx.logs);
-    res.json({ tx, logs });
+    const response = await fetch(
+      `https://api.etherscan.io/api?module=account&action=txlistinternal&txhash=${
+        req.params.transactionId
+      }&apikey=${process.env.ETHERSCAN_KEY}`
+    );
+    const internals = await response.json();
+    res.json({ tx, logs, internals });
   });
 
   return api;

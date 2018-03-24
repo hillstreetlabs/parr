@@ -22,6 +22,7 @@
     "cors": "^2.7.1",
     "dotenv": "^5.0.1",
     "elasticsearch": "^14.2.1",
+    "es6-promise": "^4.2.4",
     "ethereumjs-blockstream": "^4.0.1",
     "ethjs": "^0.3.3",
     "ethmoji-contracts": "^1.0.4",
