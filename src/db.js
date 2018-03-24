@@ -1,5 +1,6 @@
 import Eth from "ethjs";
 import Elasticsearch from "elasticsearch";
+import Etherscan from "etherscan-api";
 
 export default callback => {
   const web3 = new Eth(
@@ -15,5 +16,7 @@ export default callback => {
     log: "trace"
   });
 
-  callback({ web3, elasticsearch });
+  const etherscan = Etherscan.init(process.env.ETHERSCAN_KEY);
+
+  callback({ web3, elasticsearch, etherscan });
 };

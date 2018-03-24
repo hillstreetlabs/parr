@@ -8,6 +8,15 @@ export default ({ config, db }) => {
   // mount the facets resource
   api.use("/facets", facets({ config, db }));
 
+  api.use("/accounts/:accountId/internal_transactions", async (req, res) => {
+    const internals = await db.etherscan.account.txlistinternal(
+      null,
+      req.params.accountId,
+      0
+    );
+    res.json({ address: req.params.accountId, internals: internals.result });
+  });
+
   api.use("/accounts/:accountId", async (req, res) => {
     const balance = await db.web3.getBalance(req.params.accountId);
     res.json({ address: req.params.accountId, balance });
@@ -25,7 +34,10 @@ export default ({ config, db }) => {
 
   api.use("/transactions/:transactionId", async (req, res) => {
     const tx = await db.web3.getTransactionReceipt(req.params.transactionId);
-    res.json({ tx });
+    const internals = await db.etherscan.account.txlistinternal(
+      req.params.transactionId
+    );
+    res.json({ tx, internals });
   });
 
   api.post("/search", async (req, res) => {
