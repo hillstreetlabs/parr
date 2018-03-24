@@ -10,7 +10,7 @@ export default class Parser {
     return new Date(field.mul(new Eth.BN(1000)).toNumber(10)).toISOString();
   }
 
-  parseLog(log) {
+  parseLog(log, decoded = {}) {
     return {
       address: log.address,
       data: log.data,
@@ -20,7 +20,7 @@ export default class Parser {
       removed: log.removed,
       transactionHash: log.transactionHash,
       transactionIndex: log.transactionIndex.toString(10),
-      decoded: {}
+      decoded: decoded || {}
     };
   }
 

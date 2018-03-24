@@ -30,11 +30,23 @@ function parseBlock(blockNumber) {
       eth.getTransactionReceipt(txn.hash).then(receipt => {
         txn.cumulativeGasUsed = receipt.cumulativeGasUsed.toString(10);
         txn.gasUsed = receipt.gasUsed.toString(10);
-        txn.logs = receipt.logs.map(log => {
-          return parser.parseLog(log);
+
+        let decoded;
+        try {
+          decoded = decoder(receipt.logs);
+        } catch (error) {
+          decoded = [];
+        }
+        txn.logs = receipt.logs.map((log, index) => {
+          return parser.parseLog(log, decoded[index]);
         });
+
+        return txn;
       });
       return txn;
     });
+    console.log(parsedBlock);
   });
 }
+
+parseBlock(5311100);
