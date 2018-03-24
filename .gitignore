@@ -11,5 +11,5 @@ yarn-error.log
 node_modules
 yarn.lock
 
-lib
-dist
+/lib
+/dist
