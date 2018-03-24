@@ -41,7 +41,7 @@ export default ({ config, db }) => {
   });
 
   api.post("/search", async (req, res) => {
-    const query = await db.elasticsearch.search(req.params);
+    const query = await db.elasticsearch.client.search(req.params);
     res.json({ query });
   });
 
