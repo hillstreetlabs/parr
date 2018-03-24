@@ -1,5 +1,5 @@
 import Eth from "ethjs";
-import Elasticsearch from "elasticsearch";
+import ES from "./lib/ES";
 import Etherscan from "etherscan-api";
 
 export default callback => {
@@ -11,10 +11,7 @@ export default callback => {
     )
   );
 
-  const elasticsearch = new Elasticsearch.Client({
-    host: process.env.ELASTICSEARCH_URL,
-    log: "trace"
-  });
+  const elasticsearch = new ES();
 
   const etherscan = Etherscan.init(process.env.ETHERSCAN_KEY);
 
