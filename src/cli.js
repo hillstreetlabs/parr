@@ -3,6 +3,8 @@
 require("dotenv").config();
 
 import program from "commander";
+import clui from "clui";
+import { observe } from "mobx";
 import initDb from "./db";
 import ES, { indices } from "./lib/ES";
 import Importer from "./lib/Importer";
@@ -14,8 +16,23 @@ program
   .action(options => {
     initDb(async db => {
       const importer = new Importer(db, options);
+      const progress = new clui.Progress(25);
+      process.stdout.write(
+        `${progress.update(0)}\t${importer.imported.length} of ${
+          importer.total
+        } Imported`
+      );
+      observe(importer, "importedPerc", change => {
+        process.stdout.clearLine();
+        process.stdout.cursorTo(0);
+        process.stdout.write(
+          `${progress.update(change.newValue)}\t${
+            importer.imported.length
+          } of ${importer.total} Imported`
+        );
+      });
       await importer.import();
-      console.log(`Imported block(s): ${options.block}`);
+      process.stdout.write("\n");
     });
   });
 

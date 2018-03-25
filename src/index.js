@@ -7,7 +7,7 @@ import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import bodyParser from "body-parser";
-import initializeDb from "./db";
+import initDb from "./db";
 import api from "./api";
 import ethmoji from "./api/ethmoji";
 import config from "./config.json";
@@ -32,7 +32,7 @@ app.use(
 );
 
 // connect to db
-initializeDb(db => {
+initDb(db => {
   // api router
   app.use("/", api({ config, db }));
 

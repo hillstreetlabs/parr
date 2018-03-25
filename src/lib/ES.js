@@ -45,11 +45,6 @@ export default class ES {
             console.log(++errorCount, item.index.error);
           }
         });
-        console.log(
-          `Successfully indexed ${data.length - errorCount} out of ${
-            data.length
-          } items`
-        );
       })
       .catch(console.err);
   }

@@ -10,12 +10,17 @@ export default class Importer {
     this.blockNumbers = options.block
       ? [options.block]
       : this.getBlockNumbers();
+    console.log("Total", this.blockNumbers[0], this.blockNumbers.length);
   }
 
   @computed
-  get importedStatus() {
-    if (this.blockNumbers.length == 0) return 0;
-    return this.imported.length / this.blockNumbers.length;
+  get importedPerc() {
+    if (this.total == 0) return 0;
+    return this.imported.length / this.total;
+  }
+
+  get total() {
+    return this.blockNumbers.length;
   }
 
   @action
@@ -118,7 +123,13 @@ export default class Importer {
   }
 
   getBlockNumbers() {
-    // TODO
-    return [];
+    const blockNumbers = [];
+    //const res = await this.db.web3.getBlockByNumber("latest", false);
+    // TODODODODODOD
+    const res = { number: 10000 };
+    for (let i = 1; i <= res.number; i++) {
+      blockNumbers.push(i);
+    }
+    return blockNumbers;
   }
 }
