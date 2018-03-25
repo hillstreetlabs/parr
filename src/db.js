@@ -2,7 +2,7 @@ import Eth from "ethjs";
 import ES from "./lib/ES";
 import Etherscan from "etherscan-api";
 
-export default callback => {
+export default async callback => {
   const web3 = new Eth(
     new Eth.HttpProvider(
       `https://${process.env.INFURA_NETWORK}.infura.io/${
@@ -15,5 +15,7 @@ export default callback => {
 
   const etherscan = Etherscan.init(process.env.ETHERSCAN_KEY);
 
-  callback({ web3, elasticsearch, etherscan });
+  const latestBlock = (await web3.blockNumber()).toNumber();
+
+  callback({ web3, elasticsearch, etherscan, latestBlock });
 };

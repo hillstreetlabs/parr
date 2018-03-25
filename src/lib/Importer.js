@@ -3,38 +3,57 @@ import { action, computed, observable } from "mobx";
 
 export default class Importer {
   @observable isRunning = false;
-  @observable imported = [];
+  @observable totalImported = 0;
 
   constructor(db, options) {
     this.db = db;
-    this.blockNumbers = options.block
-      ? [options.block]
-      : this.getBlockNumbers();
-    console.log("Total", this.blockNumbers[0], this.blockNumbers.length);
+    if (options.block) {
+      this.fromBlock = this.toBlock = options.block;
+    } else {
+      this.fromBlock = options.from || 1;
+      this.toBlock = options.to || db.latestBlock;
+    }
+    if (this.toBlock < this.fromBlock)
+      throw "toBlock must be greater than or equal to fromBlock";
   }
 
   @computed
   get importedPerc() {
     if (this.total == 0) return 0;
-    return this.imported.length / this.total;
+    return this.totalImported / this.total;
   }
 
   get total() {
-    return this.blockNumbers.length;
+    return this.toBlock - this.fromBlock + 1;
   }
 
   @action
   async import() {
     this.isRunning = true;
-    // Start
-    await Promise.all(
-      this.blockNumbers.map(blockNumber => {
-        return this.importBlock(blockNumber).then(block => {
-          this.imported.push(block);
-        });
-      })
+    // Setup batch import
+    const importBatch = async (from, to) => {
+      let batchPromises = [];
+      for (let i = from; i <= to; i++) {
+        let promise = this.importBlock(i).then(
+          action(block => {
+            this.totalImported = this.totalImported + 1;
+            return block;
+          })
+        );
+        batchPromises.push(promise);
+      }
+      let imported = await Promise.all(batchPromises);
+      await this.db.elasticsearch.bulkIndex("blocks", "block", imported);
+      // Check if we've reached end of import
+      if (to < this.toBlock) {
+        importBatch(to + 1, Math.min(this.toBlock, to + 50));
+      }
+    };
+    // Start import
+    await importBatch(
+      this.fromBlock,
+      Math.min(this.fromBlock + 49, this.toBlock)
     );
-    await this.db.elasticsearch.bulkIndex("blocks", "block", this.imported);
     // Stop
     this.isRunning = false;
   }
@@ -120,16 +139,5 @@ export default class Importer {
         return this.parseTransaction(transaction);
       })
     };
-  }
-
-  getBlockNumbers() {
-    const blockNumbers = [];
-    //const res = await this.db.web3.getBlockByNumber("latest", false);
-    // TODODODODODOD
-    const res = { number: 10000 };
-    for (let i = 1; i <= res.number; i++) {
-      blockNumbers.push(i);
-    }
-    return blockNumbers;
   }
 }
