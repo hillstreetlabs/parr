@@ -1,12 +1,8 @@
 import { version } from "../../package.json";
 import { Router } from "express";
-import facets from "./facets";
 
 export default ({ config, db }) => {
   let api = Router();
-
-  // mount the facets resource
-  api.use("/facets", facets({ config, db }));
 
   api.use("/accounts/:accountId/internal_transactions", async (req, res) => {
     const internals = await db.etherscan.account.txlistinternal(
