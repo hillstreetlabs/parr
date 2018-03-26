@@ -133,7 +133,7 @@ export default class Importer {
       gasUsed: block.gasUsed.toString(10),
       hash: block.hash,
       miner: block.miner,
-      nonce: block.nonce,
+      nonce: block.nonce.toString(10),
       number: block.number.toString(10),
       parentHash: block.parentHash,
       size: block.size.toString(10),
