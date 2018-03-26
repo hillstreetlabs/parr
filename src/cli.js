@@ -15,6 +15,7 @@ program
   .option("-B, --block <n>", "Block number to parse", parseInt)
   .option("-F, --from <n>", "Block number to start parsing at", parseInt)
   .option("-T, --to <n>", "Block number to parse up to", parseInt)
+  .option("-L, --last <n>", "Parse the last n blocks", parseInt)
   .action(async options => {
     const db = await initDb();
     try {

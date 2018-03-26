@@ -7,7 +7,10 @@ export default class Importer {
 
   constructor(db, options) {
     this.db = db;
-    if (options.block) {
+    if (options.last) {
+      this.fromBlock = db.latestBlock - options.last + 1;
+      this.toBlock = db.latestBlock;
+    } else if (options.block) {
       this.fromBlock = this.toBlock = options.block;
     } else {
       this.fromBlock = options.from || 1;
