@@ -31,8 +31,10 @@ app.use(
   })
 );
 
-// connect to db
-initDb(db => {
+async function start() {
+  // connect to db
+  const db = await initDb();
+
   // api router
   app.use("/", api({ config, db }));
 
@@ -41,6 +43,8 @@ initDb(db => {
   app.server.listen(process.env.PORT || config.port, () => {
     console.log(`Started on port ${app.server.address().port}`);
   });
-});
+}
+
+start();
 
 export default app;
