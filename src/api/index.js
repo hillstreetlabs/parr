@@ -28,6 +28,11 @@ export default ({ config, db }) => {
     res.json({ block });
   });
 
+  api.use("/blocks", async (req, res) => {
+    const blocks = await db.pg.select().table("blocks");
+    res.json({ blocks });
+  });
+
   api.use("/transactions/:transactionId", async (req, res) => {
     const tx = await db.web3.getTransactionReceipt(req.params.transactionId);
     const internals = await db.etherscan.account.txlistinternal(

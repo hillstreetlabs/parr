@@ -46,7 +46,11 @@ export default class Importer {
         batchPromises.push(promise);
       }
       let imported = await Promise.all(batchPromises);
-      await this.db.elasticsearch.bulkIndex("blocks", "block", imported);
+      // Add to pg
+      let pgList = imported.map(data => {
+        return { number: parseInt(data.number), status: "downloaded", data };
+      });
+      let response = await this.db.pg("blocks").insert(pgList);
       // Check if we've reached end of import
       if (to < this.toBlock) {
         importBatch(to + 1, Math.min(this.toBlock, to + 50));

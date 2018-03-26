@@ -35,3 +35,7 @@ Import a block via the CLI:
 ```
 node_modules/.bin/babel-node src/cli import -B 5311100
 ```
+To start your development environment, run:
+```
+yarn dev
+```
