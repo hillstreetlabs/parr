@@ -1,6 +1,8 @@
 import Eth from "ethjs";
 import ES from "./lib/ES";
 import Etherscan from "etherscan-api";
+import Knex from "knex";
+import knexConfig from "../knexfile";
 
 // Returns an object with references to various databases
 export default async () => {
@@ -18,5 +20,7 @@ export default async () => {
 
   const latestBlock = (await web3.blockNumber()).toNumber();
 
-  return { web3, elasticsearch, etherscan, latestBlock };
+  const pg = Knex(knexConfig[process.env.NODE_ENV || "development"]);
+
+  return { web3, elasticsearch, etherscan, latestBlock, pg };
 };
