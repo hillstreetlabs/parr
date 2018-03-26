@@ -9,6 +9,7 @@ module.exports = {
       port: "5432",
       database: "parr_development"
     },
+    useNullAsDefault: true,
     migrations: {
       tableName: "knex_migrations",
       directory: "./src/migrations"
