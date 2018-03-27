@@ -10,6 +10,13 @@ export default class ES {
     });
   }
 
+  indices() {
+    return this.client.cat
+      .indices({ v: true })
+      .then(console.log)
+      .catch(err => console.error(`Error connecting to the es client: ${err}`));
+  }
+
   resetIndices() {
     indices.map(async indexName => {
       const indexExists = await this.client.indices.exists({
@@ -21,7 +28,11 @@ export default class ES {
     return true;
   }
 
-  bulkIndex(index, type, data) {
+  async bulkIndex(index, type, data) {
+    if (!await this.client.indices.exists({ index: index })) {
+      throw `ES index ${index} does not exist`;
+    }
+
     let bulkBody = [];
 
     data.forEach(item => {
@@ -47,12 +58,5 @@ export default class ES {
         });
       })
       .catch(console.err);
-  }
-
-  indices() {
-    return this.client.cat
-      .indices({ v: true })
-      .then(console.log)
-      .catch(err => console.error(`Error connecting to the es client: ${err}`));
   }
 }
