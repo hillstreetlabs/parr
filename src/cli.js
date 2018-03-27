@@ -59,7 +59,7 @@ program
           indexer.total
         } Indexed`
       );
-      observe(indexer, "indexerPerc", change => {
+      observe(indexer, "indexedPerc", change => {
         process.stdout.clearLine();
         process.stdout.cursorTo(0);
         process.stdout.write(

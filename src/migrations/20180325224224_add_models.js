@@ -5,6 +5,7 @@ exports.up = async (knex, Promise) => {
     table.string("status");
     table.jsonb("data");
     table.unique("number");
+    table.index("number");
     table.timestamps();
   });
 

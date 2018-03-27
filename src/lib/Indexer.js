@@ -19,7 +19,7 @@ export default class Indexer {
   }
 
   @computed
-  get totalIndexed() {
+  get indexedPerc() {
     if (this.total == 0) return 0;
     return this.totalIndexed / this.total;
   }
