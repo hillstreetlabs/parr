@@ -1,7 +1,6 @@
 import Eth from "ethjs";
 import { action, computed, observable } from "mobx";
-import upsert from "knex-upsert";
-import { Block } from "../models";
+import upsert from "../util/upsert";
 
 export default class Importer {
   @observable totalImported = 0;
@@ -36,7 +35,8 @@ export default class Importer {
     let fromBlock = this.fromBlock;
     let toBlock = Math.min(this.fromBlock + 49, this.toBlock);
     while (fromBlock <= this.toBlock) {
-      this.runBatch(fromBlock, toBlock);
+      console.log(`Importing block ${fromBlock} to block ${toBlock}`);
+      await this.runBatch(fromBlock, toBlock);
       fromBlock = toBlock + 1;
       toBlock = Math.min(fromBlock + 49, this.toBlock);
     }
@@ -47,75 +47,23 @@ export default class Importer {
     for (let blockNumber = from; blockNumber <= to; blockNumber++) {
       batchPromises.push(this.importBlock(blockNumber));
     }
-    return await Promise.all(batchPromises);
+    await Promise.all(batchPromises);
   }
 
-  // Download block
-  // Save to pg
-  // Update totalImported
   async importBlock(blockNumber) {
     return new Promise(async (resolve, reject) => {
       try {
-        console.log("Start importBlock", blockNumber);
-        // Download blocks
         const block = await this.db.web3.getBlockByNumber(blockNumber, true);
-        // Persist to pg
-        // const saved = this.db.pg
-        //   .insert(this.blockJson(block))
-        //   .into("blocks")
-        //   .then(res => {
-        //     console.log("Done!", res);
-        //   });
-        const saved = upsert({
-          db: this.db.pg,
-          table: "blocks",
-          object: this.blockJson(block),
-          key: "number"
-        });
-        console.log("saved", saved);
+        const saved = await upsert(
+          this.db.pg,
+          "blocks",
+          this.blockJson(block),
+          "(number)"
+        );
         resolve(saved);
       } catch (err) {
-        //console.log("importBlock Error", err);
-        throw err;
         reject(err);
       }
-    });
-  }
-
-  importBlockOld(blockNumber) {
-    return new Promise(async (resolve, reject) => {
-      const block = await this.db.web3.getBlockByNumber(blockNumber, true);
-      const parsedBlock = this.parseBlock(block);
-      parsedBlock.transactions = await Promise.all(
-        parsedBlock.transactions.map(async txn => {
-          const receipt = await this.db.web3.getTransactionReceipt(txn.hash);
-          txn.cumulativeGasUsed = receipt.cumulativeGasUsed.toString(10);
-          txn.gasUsed = receipt.gasUsed.toString(10);
-
-          let decoded;
-          try {
-            decoded = decoder(receipt.logs);
-          } catch (error) {
-            decoded = [];
-          }
-          txn.logs = receipt.logs.map((log, index) => {
-            return this.parseLog(log, decoded[index]);
-          });
-          return txn;
-        })
-      );
-      const receipt = await upsert({
-        db: this.db.pg,
-        table: "blocks",
-        object: {
-          number: parseInt(parsedBlock.number),
-          status: "downloaded",
-          data: parsedBlock
-        },
-        key: "number"
-      });
-      console.log("Import", receipt);
-      resolve(parsedBlock);
     });
   }
 
@@ -168,7 +116,7 @@ export default class Importer {
         gasUsed: block.gasUsed.toString(10),
         hash: block.hash,
         miner: block.miner,
-        nonce: block.nonce,
+        nonce: block.nonce.toString(10),
         parentHash: block.parentHash,
         size: block.size.toString(10),
         timestamp: this.decodeTimeField(block.timestamp)
