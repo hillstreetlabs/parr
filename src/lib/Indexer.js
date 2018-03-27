@@ -28,14 +28,31 @@ export default class Indexer {
     return this.toBlock - this.fromBlock + 1;
   }
 
+  get blockRange() {
+    return Array(this.toBlock - this.fromBlock + 1)
+      .fill()
+      .map((_, idx) => this.fromBlock + idx);
+  }
+
   @action
   async index() {
-    let response = await this.db.pg
+    const response = await this.db.pg
       .from("blocks")
-      .whereIn("number", [5311100, 5311102]);
+      .whereIn("number", this.blockRange);
 
-    console.log(response.length, this.total);
+    if (response.length !== this.total)
+      throw "Couldn't find all the blocks in the pg";
 
-    // await this.db.elasticsearch.bulkIndex("blocks", "block", imported);
+    const toIndex = response.map(object => {
+      return object.data;
+    });
+
+    const result = await this.db.elasticsearch.bulkIndex(
+      "blocks",
+      "block",
+      toIndex
+    );
+
+    this.totalIndexed = response.length;
   }
 }
