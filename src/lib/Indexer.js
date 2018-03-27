@@ -28,7 +28,17 @@ export default class Indexer {
     return this.toBlock - this.fromBlock + 1;
   }
 
+  @action
   async index() {
-    await this.db.elasticsearch.bulkIndex("blocks", "block", imported);
+    console.log("Client", this.db.pg.raw);
+
+    console.log("HELLO");
+    let response = await this.db.pg
+      .from("blocks")
+      .whereIn("number", [5311100, 5311102]);
+
+    console.log(response);
+
+    // await this.db.elasticsearch.bulkIndex("blocks", "block", imported);
   }
 }
