@@ -8,8 +8,10 @@
  * @param {string} conflictTarget - The column in the table which has a unique index constraint
  * @param {Object} itemData - a hash of properties to be inserted/updated into the row
  * @returns {Promise} - A Promise which resolves to the inserted/updated row
- */
-exports.upsertItem = function(db, tableName, conflictTarget, itemData) {
+
+ * For jsonb fields, the itemData should look like { data: JSON.stringify(data) }
+*/
+export default function upsert(db, tableName, conflictTarget, itemData) {
   let exclusions = Object.keys(itemData)
     .filter(column => column !== conflictTarget)
     .map(column => db.raw("?? = EXCLUDED.??", [column, column]).toString())
@@ -31,4 +33,4 @@ exports.upsertItem = function(db, tableName, conflictTarget, itemData) {
     .raw(query)
     .on("query", data => console.log("Knex: " + data.sql))
     .then(result => result.rows[0]);
-};
+}

@@ -30,14 +30,11 @@ export default class Indexer {
 
   @action
   async index() {
-    console.log("Client", this.db.pg.raw);
-
-    console.log("HELLO");
     let response = await this.db.pg
       .from("blocks")
       .whereIn("number", [5311100, 5311102]);
 
-    console.log(response);
+    console.log(response.length, this.total);
 
     // await this.db.elasticsearch.bulkIndex("blocks", "block", imported);
   }

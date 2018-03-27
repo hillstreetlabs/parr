@@ -68,7 +68,6 @@ program
           } Indexed`
         );
       });
-      console.log("SUP");
       await indexer.index();
       process.stdout.write("\n");
     } catch (err) {
