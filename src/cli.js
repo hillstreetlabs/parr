@@ -57,8 +57,7 @@ program
   .action(async options => {
     const db = await initDb();
     const downloader = new BlockDownloader(db);
-    await downloader.run();
-    db.pg.destroy();
+    downloader.run();
   });
 
 program

@@ -7,14 +7,16 @@ export default class BlockImporter {
     this.db = db;
   }
 
-  async run() {
+  async run(delay = 1000) {
     let block = await this.getBlock();
-    while (block) {
+    if (block) {
       await this.importBlock(block.number);
       console.log(`Downloaded block ${block.number}`);
-      block = await this.getBlock();
+      this.run();
+    } else {
+      console.log(`No block found, waiting ${delay}ms`);
+      setTimeout(() => this.run(delay * 2), delay);
     }
-    return true;
   }
 
   async getBlock() {
