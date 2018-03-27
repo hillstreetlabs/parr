@@ -32,7 +32,6 @@
     "express": "^4.13.3",
     "isomorphic-fetch": "^2.2.1",
     "knex": "^0.14.4",
-    "knex-upsert": "^0.0.2",
     "mobx": "^4.1.0",
     "morgan": "^1.8.0",
     "pg": "^7.4.1",
