@@ -2,6 +2,7 @@ exports.up = async (knex, Promise) => {
   await knex.schema.createTable("blocks", function(table) {
     table.increments();
     table.string("status");
+    table.index("status");
     table.jsonb("data");
     table.integer("number");
     table.unique("number");

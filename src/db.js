@@ -18,11 +18,9 @@ export default async () => {
 
   const etherscan = Etherscan.init(process.env.ETHERSCAN_KEY);
 
-  const latestBlock = (await web3.blockNumber()).toNumber();
-
   const pg = Knex(knexConfig[process.env.NODE_ENV || "development"]);
 
   console.log("Started databases");
 
-  return { web3, elasticsearch, etherscan, latestBlock, pg };
+  return { web3, elasticsearch, etherscan, pg };
 };
