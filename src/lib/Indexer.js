@@ -1,8 +1,7 @@
 import { action, computed, observable } from "mobx";
 
 export default class Indexer {
-  @observable isRunning = false;
-  @observable totalImported = 0;
+  @observable totalIndexed = 0;
 
   constructor(db, options) {
     this.db = db;
@@ -20,16 +19,16 @@ export default class Indexer {
   }
 
   @computed
-  get importedPerc() {
+  get totalIndexed() {
     if (this.total == 0) return 0;
-    return this.totalImported / this.total;
-  }
-
-  async index(imported) {
-    await this.db.elasticsearch.bulkIndex("blocks", "block", imported);
+    return this.totalIndexed / this.total;
   }
 
   get total() {
     return this.toBlock - this.fromBlock + 1;
+  }
+
+  async index() {
+    await this.db.elasticsearch.bulkIndex("blocks", "block", imported);
   }
 }
