@@ -2,7 +2,7 @@ import Eth from "ethjs";
 import { action, computed, observable } from "mobx";
 import upsert from "../util/upsert";
 
-const batchSize = 2;
+const batchSize = 20;
 
 export default class BlockImporter {
   constructor(db, options) {
