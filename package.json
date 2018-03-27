@@ -5,6 +5,8 @@
   "main": "dist",
   "scripts": {
     "dev": "nodemon -w src --exec \"babel-node src\"",
+    "watch": "babel src -d dist --watch -s -D",
+    "cli": "node dist/cli.js",
     "build": "babel src -s -D -d dist",
     "start": "node dist",
     "prestart": "npm run -s build",
