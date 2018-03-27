@@ -8,6 +8,7 @@ import clui from "clui";
 import { observe } from "mobx";
 import initDb from "./db";
 import Importer from "./lib/Importer";
+import TransactionImporter from "./lib/TransactionImporter";
 import Indexer from "./lib/Indexer";
 
 program
@@ -21,6 +22,16 @@ program
     const db = await initDb();
     const importer = new Importer(db, options);
     await importer.run();
+    db.pg.destroy();
+  });
+
+program
+  .command("txn-import")
+  .description("import transaction(s) from Ethereum to Parr")
+  .action(async options => {
+    const db = await initDb();
+    const importer = new TransactionImporter(db);
+    await importer.import();
     db.pg.destroy();
   });
 
