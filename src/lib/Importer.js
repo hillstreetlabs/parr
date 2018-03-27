@@ -54,55 +54,50 @@ export default class Importer {
     return new Promise(async (resolve, reject) => {
       try {
         const block = await this.db.web3.getBlockByNumber(blockNumber, true);
-        const saved = await upsert(
+        const savedBlock = await upsert(
           this.db.pg,
           "blocks",
           this.blockJson(block),
           "(number)"
         );
-        resolve(saved);
+        const transactionsJson = block.transactions.map(tx =>
+          this.transactionJson(tx)
+        );
+        let savedTransactions;
+        try {
+          savedTransactions = await this.db
+            .pg("transactions")
+            .insert(transactionsJson);
+        } catch (err) {
+          // Silence duplicate errors
+        }
+        resolve({ block, savedBlock, savedTransactions });
       } catch (err) {
         reject(err);
       }
     });
   }
 
-  decodeIntegerField(hex) {
-    const result = hex.split("0x")[1];
-    return parseInt(result, 16);
-  }
-
   decodeTimeField(field) {
     return new Date(field.mul(new Eth.BN(1000)).toNumber(10)).toISOString();
   }
 
-  parseLog(log, decoded = {}) {
+  transactionJson(transaction) {
     return {
-      address: log.address,
-      data: log.data,
-      blockHash: log.blockHash,
-      blockNumber: log.blockNumber.toString(10),
-      logIndex: log.logIndex.toString(10),
-      removed: log.removed,
-      transactionHash: log.transactionHash,
-      transactionIndex: log.transactionIndex.toString(10),
-      decoded: decoded || {}
-    };
-  }
-
-  parseTransaction(transaction) {
-    return {
-      blockHash: transaction.blockHash,
-      blockNumber: transaction.blockNumber.toString(10),
-      from: transaction.from,
-      gas: transaction.gas.toString(10),
-      gasPrice: Eth.fromWei(transaction.gasPrice, "ether"),
       hash: transaction.hash,
-      nonce: transaction.nonce.toString(10),
-      to: transaction.to,
-      transactionIndex: transaction.transactionIndex.toString(10),
-      value: Eth.fromWei(transaction.value, "ether"),
-      logs: []
+      status: "downloaded",
+      data: {
+        blockHash: transaction.blockHash,
+        blockNumber: transaction.blockNumber.toNumber(),
+        from: transaction.from,
+        gas: transaction.gas.toString(10),
+        gasPrice: Eth.fromWei(transaction.gasPrice, "ether"),
+        nonce: transaction.nonce.toString(10),
+        to: transaction.to,
+        transactionIndex: transaction.transactionIndex.toString(10),
+        value: Eth.fromWei(transaction.value, "ether"),
+        logs: []
+      }
     };
   }
 
