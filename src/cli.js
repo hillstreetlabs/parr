@@ -35,7 +35,7 @@ program
     const promises = [];
     if (options.block) promises.push(importer.importBlock(options.block));
     if (options.last) {
-      promises.push(importer.importBlocks(latest - options.last, latest));
+      promises.push(importer.importBlocks(latest - (options.last - 1), latest));
     }
     if (options.from || options.to) {
       const fromBlock = options.from || 1;
@@ -58,6 +58,7 @@ program
     const db = await initDb();
     const downloader = new BlockDownloader(db);
     downloader.run();
+    process.on("SIGINT", () => downloader.exit());
   });
 
 program

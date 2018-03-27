@@ -2,30 +2,67 @@ import Eth from "ethjs";
 import { action, computed, observable } from "mobx";
 import upsert from "../util/upsert";
 
+const batchSize = 2;
+
 export default class BlockImporter {
   constructor(db, options) {
     this.db = db;
+    this.timer;
+    this.pid = `downloader@${process.pid}`;
   }
 
   async run(delay = 1000) {
-    let block = await this.getBlock();
-    if (block) {
-      await this.importBlock(block.number);
-      console.log(`Downloaded block ${block.number}`);
+    let blockNumbers = await this.getBlocks();
+    console.log("Blocks", blockNumbers);
+    if (blockNumbers.length > 0) {
+      await this.importBlocks(blockNumbers);
       this.run();
     } else {
-      console.log(`No block found, waiting ${delay}ms`);
-      setTimeout(() => this.run(delay * 2), delay);
+      console.log(`No imported blocks found, waiting ${delay}ms`);
+      this.timer = setTimeout(() => this.run(delay * 1.5), delay);
     }
   }
 
-  async getBlock() {
-    const blocks = await this.db.pg
+  async exit() {
+    console.log("Exiting...");
+    clearTimeout(this.timer);
+    const unlocked = await this.db.pg
       .select()
       .from("blocks")
-      .where({ status: "imported" })
-      .limit(1);
-    return blocks[0];
+      .where({ locked_by: this.pid })
+      .returning("number")
+      .update({ locked_by: null, locked_at: null });
+    console.log(`Unlocked ${unlocked.length} blocks`);
+    process.exit();
+  }
+
+  getBlocks() {
+    return this.db.pg.transaction(async trx => {
+      const blocks = await trx
+        .select()
+        .from("blocks")
+        .where({ status: "imported" })
+        .returning("number")
+        .limit(batchSize);
+      const numbers = blocks.map(block => block.number);
+      return trx
+        .select()
+        .from("blocks")
+        .whereIn("number", numbers)
+        .returning("number")
+        .update({
+          locked_by: this.pid,
+          locked_at: this.db.pg.fn.now()
+        });
+    });
+  }
+
+  async importBlocks(blockNumbers) {
+    await Promise.all(
+      blockNumbers.map(block => {
+        return this.importBlock(block);
+      })
+    );
   }
 
   async importBlock(blockNumber) {
@@ -47,6 +84,7 @@ export default class BlockImporter {
     } catch (err) {
       // Silence duplicate errors
     }
+    console.log(`Downloaded block ${blockNumber}`);
     return true;
   }
 
@@ -77,6 +115,10 @@ export default class BlockImporter {
     return {
       number: block.number.toNumber(),
       status: "downloaded",
+      locked_by: null,
+      locked_at: null,
+      downloaded_by: this.pid,
+      downloaded_at: this.db.pg.fn.now(),
       data: {
         difficulty: block.difficulty.toString(10),
         gasLimit: block.gasLimit.toString(10),
