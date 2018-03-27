@@ -13,7 +13,6 @@ export default class BlockImporter {
 
   async run(delay = 1000) {
     let blockNumbers = await this.getBlocks();
-    console.log("Blocks", blockNumbers);
     if (blockNumbers.length > 0) {
       await this.importBlocks(blockNumbers);
       this.run();
