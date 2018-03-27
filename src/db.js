@@ -22,5 +22,7 @@ export default async () => {
 
   const pg = Knex(knexConfig[process.env.NODE_ENV || "development"]);
 
+  console.log("Started databases");
+
   return { web3, elasticsearch, etherscan, latestBlock, pg };
 };

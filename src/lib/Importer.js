@@ -1,8 +1,8 @@
 import Eth from "ethjs";
 import { action, computed, observable } from "mobx";
+import upsert from "../util/upsert";
 
 export default class Importer {
-  @observable isRunning = false;
   @observable totalImported = 0;
 
   constructor(db, options) {
@@ -30,64 +30,40 @@ export default class Importer {
     return this.toBlock - this.fromBlock + 1;
   }
 
-  @action
-  async import() {
-    this.isRunning = true;
-    // Setup batch import
-    const importBatch = async (from, to) => {
-      let batchPromises = [];
-      for (let i = from; i <= to; i++) {
-        let promise = this.importBlock(i).then(
-          action(block => {
-            this.totalImported = this.totalImported + 1;
-            return block;
-          })
-        );
-        batchPromises.push(promise);
-      }
-      let imported = await Promise.all(batchPromises);
-      // Add to pg
-      let pgList = imported.map(data => {
-        return { number: parseInt(data.number), status: "downloaded", data };
-      });
-      let response = await this.db.pg("blocks").insert(pgList);
-      // Check if we've reached end of import
-      if (to < this.toBlock) {
-        importBatch(to + 1, Math.min(this.toBlock, to + 50));
-      }
-    };
+  async run() {
     // Start import
-    await importBatch(
-      this.fromBlock,
-      Math.min(this.fromBlock + 49, this.toBlock)
-    );
-    // Stop
-    this.isRunning = false;
+    let fromBlock = this.fromBlock;
+    let toBlock = Math.min(this.fromBlock + 49, this.toBlock);
+    while (fromBlock <= this.toBlock) {
+      console.log(`Importing block ${fromBlock} to block ${toBlock}`);
+      await this.runBatch(fromBlock, toBlock);
+      fromBlock = toBlock + 1;
+      toBlock = Math.min(fromBlock + 49, this.toBlock);
+    }
   }
 
-  importBlock(blockNumber) {
-    return new Promise(async (resolve, reject) => {
-      const block = await this.db.web3.getBlockByNumber(blockNumber, true);
-      const parsedBlock = this.parseBlock(block);
-      parsedBlock.transactions = await Promise.all(
-        parsedBlock.transactions.map(async txn => {
-          const receipt = await this.db.web3.getTransactionReceipt(txn.hash);
-          txn.cumulativeGasUsed = receipt.cumulativeGasUsed.toString(10);
-          txn.gasUsed = receipt.gasUsed.toString(10);
+  async runBatch(from, to) {
+    let batchPromises = [];
+    for (let blockNumber = from; blockNumber <= to; blockNumber++) {
+      batchPromises.push(this.importBlock(blockNumber));
+    }
+    await Promise.all(batchPromises);
+  }
 
-          let decoded;
-          try {
-            decoded = decoder(receipt.logs);
-          } catch (error) {
-            decoded = [];
-          }
-          txn.logs = receipt.logs.map((log, index) => {
-            return this.parseLog(log, decoded[index]);
-          });
-          return txn;
-        })
-      );
-      resolve(parsedBlock);
+  async importBlock(blockNumber) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const block = await this.db.web3.getBlockByNumber(blockNumber, true);
+        const saved = await upsert(
+          this.db.pg,
+          "blocks",
+          this.blockJson(block),
+          "(number)"
+        );
+        resolve(saved);
+      } catch (err) {
+        reject(err);
+      }
     });
   }
 
@@ -130,21 +106,21 @@ export default class Importer {
     };
   }
 
-  parseBlock(block) {
+  blockJson(block) {
     return {
-      difficulty: block.difficulty.toString(10),
-      gasLimit: block.gasLimit.toString(10),
-      gasUsed: block.gasUsed.toString(10),
-      hash: block.hash,
-      miner: block.miner,
-      nonce: block.nonce.toString(10),
-      number: block.number.toString(10),
-      parentHash: block.parentHash,
-      size: block.size.toString(10),
-      timestamp: this.decodeTimeField(block.timestamp),
-      transactions: block.transactions.map(transaction => {
-        return this.parseTransaction(transaction);
-      })
+      number: block.number.toNumber(),
+      status: "downloaded",
+      data: {
+        difficulty: block.difficulty.toString(10),
+        gasLimit: block.gasLimit.toString(10),
+        gasUsed: block.gasUsed.toString(10),
+        hash: block.hash,
+        miner: block.miner,
+        nonce: block.nonce.toString(10),
+        parentHash: block.parentHash,
+        size: block.size.toString(10),
+        timestamp: this.decodeTimeField(block.timestamp)
+      }
     };
   }
 }
