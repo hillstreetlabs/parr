@@ -83,21 +83,23 @@ export default class TransactionDownloader {
   }
 
   transactionJson(transaction, receipt, logs = []) {
+    const { data } = transaction;
+
     return {
       hash: transaction.hash,
       status: "downloaded",
       data: {
-        blockHash: transaction.blockHash,
-        blockNumber: transaction.blockNumber.toNumber(),
+        blockHash: data.blockHash,
+        blockNumber: data.blockNumber.toNumber(),
         cumulativeGasUsed: receipt.cumulativeGasUsed.toString(10),
-        from: transaction.from,
-        gas: transaction.gas.toString(10),
-        gasPrice: Eth.fromWei(transaction.gasPrice, "ether"),
+        from: data.from,
+        gas: data.gas.toString(10),
+        gasPrice: Eth.fromWei(data.gasPrice, "ether"),
         gasUsed: receipt.gasUsed.toString(10),
-        nonce: transaction.nonce.toString(10),
-        to: transaction.to,
-        transactionIndex: transaction.transactionIndex.toString(10),
-        value: Eth.fromWei(transaction.value, "ether"),
+        nonce: data.nonce.toString(10),
+        to: data.to,
+        transactionIndex: data.transactionIndex.toString(10),
+        value: Eth.fromWei(data.value, "ether"),
         logs: logs || []
       }
     };
