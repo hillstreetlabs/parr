@@ -21,24 +21,24 @@ program
     try {
       const importer = new Importer(db, options);
       const progress = new clui.Progress(25);
-      process.stdout.write(
-        `${progress.update(0)}\t${importer.totalImported} of ${
-          importer.total
-        } Imported`
-      );
-      observe(importer, "importedPerc", change => {
-        process.stdout.clearLine();
-        process.stdout.cursorTo(0);
-        process.stdout.write(
-          `${progress.update(change.newValue)}\t${importer.totalImported} of ${
-            importer.total
-          } Imported`
-        );
-      });
-      await importer.import();
-      process.stdout.write("\n");
+      // process.stdout.write(
+      //   `${progress.update(0)}\t${importer.totalImported} of ${
+      //     importer.total
+      //   } Imported`
+      // );
+      // observe(importer, "importedPerc", change => {
+      //   process.stdout.clearLine();
+      //   process.stdout.cursorTo(0);
+      //   process.stdout.write(
+      //     `${progress.update(change.newValue)}\t${importer.totalImported} of ${
+      //       importer.total
+      //     } Imported`
+      //   );
+      // });
+      await importer.run();
+      //process.stdout.write("\n");
     } catch (err) {
-      console.log(`Error: ${err}`);
+      console.log(`cli Error: ${err}`);
     }
   });
 

@@ -1,8 +1,9 @@
 import Eth from "ethjs";
 import { action, computed, observable } from "mobx";
+import upsert from "knex-upsert";
+import { Block } from "../models";
 
 export default class Importer {
-  @observable isRunning = false;
   @observable totalImported = 0;
 
   constructor(db, options) {
@@ -30,42 +31,58 @@ export default class Importer {
     return this.toBlock - this.fromBlock + 1;
   }
 
-  @action
-  async import() {
-    this.isRunning = true;
-    // Setup batch import
-    const importBatch = async (from, to) => {
-      let batchPromises = [];
-      for (let i = from; i <= to; i++) {
-        let promise = this.importBlock(i).then(
-          action(block => {
-            this.totalImported = this.totalImported + 1;
-            return block;
-          })
-        );
-        batchPromises.push(promise);
-      }
-      let imported = await Promise.all(batchPromises);
-      // Add to pg
-      let pgList = imported.map(data => {
-        return { number: parseInt(data.number), status: "downloaded", data };
-      });
-      let response = await this.db.pg("blocks").insert(pgList);
-      // Check if we've reached end of import
-      if (to < this.toBlock) {
-        importBatch(to + 1, Math.min(this.toBlock, to + 50));
-      }
-    };
+  async run() {
     // Start import
-    await importBatch(
-      this.fromBlock,
-      Math.min(this.fromBlock + 49, this.toBlock)
-    );
-    // Stop
-    this.isRunning = false;
+    let fromBlock = this.fromBlock;
+    let toBlock = Math.min(this.fromBlock + 49, this.toBlock);
+    while (fromBlock <= this.toBlock) {
+      this.runBatch(fromBlock, toBlock);
+      fromBlock = toBlock + 1;
+      toBlock = Math.min(fromBlock + 49, this.toBlock);
+    }
   }
 
-  importBlock(blockNumber) {
+  async runBatch(from, to) {
+    let batchPromises = [];
+    for (let blockNumber = from; blockNumber <= to; blockNumber++) {
+      batchPromises.push(this.importBlock(blockNumber));
+    }
+    return await Promise.all(batchPromises);
+  }
+
+  // Download block
+  // Save to pg
+  // Update totalImported
+  async importBlock(blockNumber) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        console.log("Start importBlock", blockNumber);
+        // Download blocks
+        const block = await this.db.web3.getBlockByNumber(blockNumber, true);
+        // Persist to pg
+        // const saved = this.db.pg
+        //   .insert(this.blockJson(block))
+        //   .into("blocks")
+        //   .then(res => {
+        //     console.log("Done!", res);
+        //   });
+        const saved = upsert({
+          db: this.db.pg,
+          table: "blocks",
+          object: this.blockJson(block),
+          key: "number"
+        });
+        console.log("saved", saved);
+        resolve(saved);
+      } catch (err) {
+        //console.log("importBlock Error", err);
+        throw err;
+        reject(err);
+      }
+    });
+  }
+
+  importBlockOld(blockNumber) {
     return new Promise(async (resolve, reject) => {
       const block = await this.db.web3.getBlockByNumber(blockNumber, true);
       const parsedBlock = this.parseBlock(block);
@@ -87,6 +104,17 @@ export default class Importer {
           return txn;
         })
       );
+      const receipt = await upsert({
+        db: this.db.pg,
+        table: "blocks",
+        object: {
+          number: parseInt(parsedBlock.number),
+          status: "downloaded",
+          data: parsedBlock
+        },
+        key: "number"
+      });
+      console.log("Import", receipt);
       resolve(parsedBlock);
     });
   }
@@ -130,21 +158,21 @@ export default class Importer {
     };
   }
 
-  parseBlock(block) {
+  blockJson(block) {
     return {
-      difficulty: block.difficulty.toString(10),
-      gasLimit: block.gasLimit.toString(10),
-      gasUsed: block.gasUsed.toString(10),
-      hash: block.hash,
-      miner: block.miner,
-      nonce: block.nonce,
-      number: block.number.toString(10),
-      parentHash: block.parentHash,
-      size: block.size.toString(10),
-      timestamp: this.decodeTimeField(block.timestamp),
-      transactions: block.transactions.map(transaction => {
-        return this.parseTransaction(transaction);
-      })
+      number: block.number.toNumber(),
+      status: "downloaded",
+      data: {
+        difficulty: block.difficulty.toString(10),
+        gasLimit: block.gasLimit.toString(10),
+        gasUsed: block.gasUsed.toString(10),
+        hash: block.hash,
+        miner: block.miner,
+        nonce: block.nonce,
+        parentHash: block.parentHash,
+        size: block.size.toString(10),
+        timestamp: this.decodeTimeField(block.timestamp)
+      }
     };
   }
 }
