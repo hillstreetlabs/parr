@@ -36,7 +36,7 @@ export default class BlockImporter {
   saveBlock(number) {
     const blockJson = {
       number: parseInt(number),
-      status: "downloaded"
+      status: "imported"
     };
     return upsert(this.db.pg, "blocks", blockJson, "(number)");
   }

@@ -8,6 +8,7 @@ import clui from "clui";
 import { observe } from "mobx";
 import initDb from "./db";
 import BlockImporter from "./lib/BlockImporter";
+import BlockDownloader from "./lib/BlockDownloader";
 import Indexer from "./lib/Indexer";
 
 program
@@ -47,6 +48,16 @@ program
       promises.push(importer.importBlocks(1, latest));
     }
     await Promise.all(promises);
+    db.pg.destroy();
+  });
+
+program
+  .command("download")
+  .description("Download blocks that have only been imported")
+  .action(async options => {
+    const db = await initDb();
+    const downloader = new BlockDownloader(db);
+    await downloader.run();
     db.pg.destroy();
   });
 
