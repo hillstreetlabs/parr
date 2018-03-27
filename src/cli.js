@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 require("dotenv").config();
+import "source-map-support/register";
 
 import program from "commander";
 import clui from "clui";
 import { observe } from "mobx";
 import initDb from "./db";
-import ES, { indices } from "./lib/ES";
 import Importer from "./lib/Importer";
 
 program
@@ -45,8 +45,8 @@ program
 program
   .command("reset")
   .description("reset Elasticsearch")
-  .action(options => {
-    const elasticsearch = new ES();
+  .action(async options => {
+    const { elasticsearch } = await initDb();
     elasticsearch.resetIndices();
     console.log(`Reset elasticsearch indices: ${indices}`);
   });
