@@ -2,7 +2,7 @@ import Eth from "ethjs";
 import { action, computed, observable } from "mobx";
 import upsert from "../util/upsert";
 
-export default class Importer {
+export default class BlockImporter {
   @observable totalImported = 0;
 
   constructor(db, options) {
@@ -104,7 +104,7 @@ export default class Importer {
   blockJson(block) {
     return {
       number: block.number.toNumber(),
-      status: "downloaded",
+      status: "imported",
       data: {
         difficulty: block.difficulty.toString(10),
         gasLimit: block.gasLimit.toString(10),
