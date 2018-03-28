@@ -44,7 +44,7 @@ export default class TransactionDownloader {
 
   getTransactionHashes() {
     return this.db.pg.transaction(async trx => {
-      const txns = await trx
+      const transactions = await trx
         .select()
         .from("transactions")
         .where({ status: "imported" })
@@ -52,7 +52,7 @@ export default class TransactionDownloader {
       const hashes = await trx
         .select()
         .from("transactions")
-        .whereIn("hash", txns.map(txn => txn.hash))
+        .whereIn("hash", transactions.map(transaction => transaction.hash))
         .returning("hash")
         .update({
           locked_by: this.pid,
@@ -74,27 +74,12 @@ export default class TransactionDownloader {
     try {
       const receipt = await this.db.web3.getTransactionReceipt(transactionHash);
 
-      let decoded;
-
-      if (receipt.to in ADDRESS_TO_ABI) {
-        try {
-          const decoder = Eth.abi.logDecoder(ADDRESS_TO_ABI[receipt.to]);
-          decoded = decoder(receipt.logs);
-        } catch (error) {
-          decoded = [];
-        }
-      } else {
-        decoded = [];
-      }
-
-      const logs = receipt.logs.map((log, index) => {
-        return this.logJson(log, decoded[index]);
-      });
+      const logs = await this.importLogs(receipt.to, receipt.logs);
 
       const transaction = await upsert(
         this.db.pg,
         "transactions",
-        this.transactionJson(receipt, logs),
+        this.transactionJson(receipt),
         "(hash)"
       );
 
@@ -104,21 +89,53 @@ export default class TransactionDownloader {
     }
   }
 
+  async importLogs(toAddress, logs) {
+    let decoded;
+    if (toAddress in ADDRESS_TO_ABI) {
+      try {
+        const decoder = Eth.abi.logDecoder(ADDRESS_TO_ABI[toAddress]);
+        decoded = decoder(logs);
+      } catch (error) {
+        decoded = [];
+      }
+    } else {
+      decoded = [];
+    }
+    return Promise.all(
+      logs.map((log, index) => {
+        return this.importLog(log, decoded[index]);
+      })
+    );
+  }
+
+  async importLog(log, decoded) {
+    const saved = await upsert(
+      this.db.pg,
+      "logs",
+      this.logJson(log, decoded),
+      "(transaction_hash, log_index)"
+    );
+    console.log(`Downloaded log ${log.transactionHash}:${log.logIndex}`);
+  }
+
   logJson(log, decoded = {}) {
     return {
-      address: log.address,
-      data: log.data,
-      blockHash: log.blockHash,
-      blockNumber: log.blockNumber.toString(10),
-      logIndex: log.logIndex.toString(10),
-      removed: log.removed,
-      transactionHash: log.transactionHash,
-      transactionIndex: log.transactionIndex.toString(10),
-      decoded: decoded || {}
+      transaction_hash: log.transactionHash,
+      log_index: log.logIndex.toNumber(),
+      status: "downloaded",
+      decoded: decoded,
+      data: {
+        address: log.address,
+        data: log.data,
+        blockHash: log.blockHash,
+        blockNumber: log.blockNumber.toString(10),
+        removed: log.removed,
+        transactionIndex: log.transactionIndex.toString(10)
+      }
     };
   }
 
-  transactionJson(receipt, logs = []) {
+  transactionJson(receipt) {
     return {
       hash: receipt.transactionHash,
       status: "downloaded",
@@ -136,8 +153,7 @@ export default class TransactionDownloader {
         to: receipt.to,
         logsBloom: receipt.logsBloom,
         status: receipt.status,
-        transactionIndex: receipt.transactionIndex,
-        logs: logs || []
+        transactionIndex: receipt.transactionIndex
       }
     };
   }

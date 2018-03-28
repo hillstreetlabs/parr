@@ -55,7 +55,7 @@ program
 
 program
   .command("downloadBlocks")
-  .description("Download blocks that have only been imported")
+  .description("Download block data from Ethereum ")
   .action(async options => {
     const db = await initDb();
     const downloader = new BlockDownloader(db);
@@ -64,7 +64,7 @@ program
   });
 
 program
-  .command("downloadTxns")
+  .command("downloadTransactions")
   .description("download transaction(s) from Ethereum to Parr")
   .action(async options => {
     const db = await initDb();

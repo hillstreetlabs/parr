@@ -31,8 +31,14 @@ exports.up = async (knex, Promise) => {
 
   await knex.schema.createTable("logs", function(table) {
     table.increments();
+    table.string("transaction_hash");
+    table.index("transaction_hash");
+    table.integer("log_index");
+    table.index("log_index");
     table.string("status");
     table.jsonb("data");
+    table.jsonb("decoded");
+    table.unique(["transaction_hash", "log_index"]);
     table.timestamps();
   });
 
