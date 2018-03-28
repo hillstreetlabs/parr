@@ -126,7 +126,8 @@ export default class BlockDownloader {
         nonce: block.nonce.toString(10),
         parentHash: block.parentHash,
         size: block.size.toString(10),
-        timestamp: this.decodeTimeField(block.timestamp)
+        timestamp: this.decodeTimeField(block.timestamp),
+        transactionCount: (block.transactions || []).length
       }
     };
   }
