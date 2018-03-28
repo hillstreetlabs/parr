@@ -76,33 +76,10 @@ program
 program
   .command("index")
   .description("index block(s) from Parr PG instance to Parr ES instance")
-  .option("-B, --block <n>", "Block number to index", parseInt)
-  .option("-F, --from <n>", "Block number to start indexing at", parseInt)
-  .option("-T, --to <n>", "Block number to index up to", parseInt)
   .action(async options => {
     const db = await initDb();
-    try {
-      const indexer = new Indexer(db, options);
-      const progress = new clui.Progress(25);
-      process.stdout.write(
-        `${progress.update(0)}\t${indexer.totalIndexed} of ${
-          indexer.total
-        } Indexed`
-      );
-      observe(indexer, "indexedPerc", change => {
-        process.stdout.clearLine();
-        process.stdout.cursorTo(0);
-        process.stdout.write(
-          `${progress.update(change.newValue)}\t${indexer.totalIndexed} of ${
-            indexer.total
-          } Indexed`
-        );
-      });
-      await indexer.index();
-      process.stdout.write("\n");
-    } catch (err) {
-      console.log(`Error: ${err}`);
-    }
+    const indexer = new Indexer(db, options);
+    indexer.run();
   });
 
 program

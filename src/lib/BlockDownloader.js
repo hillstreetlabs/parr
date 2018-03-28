@@ -12,7 +12,7 @@ export default class BlockDownloader {
   }
 
   async run(delay = 1000) {
-    let blockNumbers = await this.getBlocks();
+    let blockNumbers = await this.getBlockNumbers();
     if (blockNumbers.length > 0) {
       await this.importBlocks(blockNumbers);
       this.run();
@@ -35,24 +35,23 @@ export default class BlockDownloader {
     process.exit();
   }
 
-  getBlocks() {
+  getBlockNumbers() {
     return this.db.pg.transaction(async trx => {
       const blocks = await trx
         .select()
         .from("blocks")
-        .where({ status: "imported" })
-        .returning("number")
+        .where({ status: "imported", locked_by: null })
         .limit(BATCH_SIZE);
-      const numbers = blocks.map(block => block.number);
-      return trx
+      const numbers = await trx
         .select()
         .from("blocks")
-        .whereIn("number", numbers)
+        .whereIn("number", blocks.map(block => block.number))
         .returning("number")
         .update({
           locked_by: this.pid,
           locked_at: this.db.pg.fn.now()
         });
+      return numbers;
     });
   }
 
