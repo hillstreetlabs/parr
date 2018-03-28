@@ -108,28 +108,7 @@ export default class Indexer {
         .where({ number: transaction.data.blockNumber })
         .first();
 
-      const logs = await this.db
-        .pg("logs")
-        .where({ transaction_hash: transaction.hash });
-
-      const parsedLogs = logs.map(log => {
-        return this.logJson(log);
-      });
-
-      await this.db.elasticsearch.bulkIndex("logs", "log", parsedLogs);
-
-      await this.db
-        .pg("logs")
-        .where({ transaction_hash: transaction.hash })
-        .update({
-          status: "indexed",
-          indexed_by: this.pid,
-          indexed_at: this.db.pg.fn.now()
-        });
-
-      parsedLogs.forEach(log => {
-        console.log(`Indexed log ${log.transaction_hash}:${log.log_index}`);
-      });
+      const parsedLogs = await this.indexLogs(transaction);
 
       const parsedTransaction = this.transactionJson(
         transaction,
@@ -155,6 +134,33 @@ export default class Indexer {
     } catch (error) {
       console.log(`Failed to index transaction ${transaction.hash}`, error);
     }
+  }
+
+  async indexLogs(transaction) {
+    const logs = await this.db
+      .pg("logs")
+      .where({ transaction_hash: transaction.hash });
+
+    const parsedLogs = logs.map(log => {
+      return this.logJson(log);
+    });
+
+    await this.db.elasticsearch.bulkIndex("logs", "log", parsedLogs);
+
+    await this.db
+      .pg("logs")
+      .where({ transaction_hash: transaction.hash })
+      .update({
+        status: "indexed",
+        indexed_by: this.pid,
+        indexed_at: this.db.pg.fn.now()
+      });
+
+    parsedLogs.forEach(log => {
+      console.log(`Indexed log ${log.transaction_hash}:${log.log_index}`);
+    });
+
+    return parsedLogs;
   }
 
   logJson(log) {
