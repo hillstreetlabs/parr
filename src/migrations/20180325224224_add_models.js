@@ -21,6 +21,10 @@ exports.up = async (knex, Promise) => {
     table.string("hash");
     table.unique("hash");
     table.index("hash");
+    table.string("locked_by");
+    table.timestamp("locked_at");
+    table.string("downloaded_by");
+    table.timestamp("downloaded_at");
     table.timestamps();
   });
 

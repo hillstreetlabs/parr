@@ -69,8 +69,8 @@ program
   .action(async options => {
     const db = await initDb();
     const downloader = new TransactionDownloader(db);
-    await downloader.run();
-    db.pg.destroy();
+    downloader.run();
+    process.on("SIGINT", () => downloader.exit());
   });
 
 program

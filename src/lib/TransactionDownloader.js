@@ -6,36 +6,69 @@ const ADDRESS_TO_ABI = {
   "0xa6d954d08877f8ce1224f6bfb83484c7d3abf8e9": Ethmoji.abi
 };
 
+const BATCH_SIZE = 4;
+
 export default class TransactionDownloader {
   constructor(db) {
     this.db = db;
+    this.timer;
+    this.pid = `downloader@${process.pid}`;
   }
 
-  async run() {
-    const test = "0xa6d954d08877f8ce1224f6bfb83484c7d3abf8e9" in ADDRESS_TO_ABI;
-    console.log("HEY", test);
-    return;
-    let transaction = await this.getTransaction();
-    while (transaction) {
-      await this.importTransaction(transaction);
-      console.log(`Downloaded transaction ${transaction.hash}`);
-      transaction = await this.getTransaction();
+  async run(delay = 1000) {
+    let transactions = await this.getTransactions();
+
+    if (transactions.length > 0) {
+      await this.importTransactions(transactions);
+      this.run();
+    } else {
+      console.log(`No imported transactions found, waiting ${delay}ms`);
+      this.timer = setTimeout(() => this.run(delay * 1.5), delay);
     }
-    return true;
   }
 
-  async getTransaction() {
-    const transaction = await this.db
-      .pg("transactions")
-      .where({ status: "imported" })
-      .first();
+  async exit() {
+    console.log("Exiting...");
+    clearTimeout(this.timer);
+    const unlocked = await this.db.pg
+      .select()
+      .from("blocks")
+      .where({ locked_by: this.pid })
+      .returning("number")
+      .update({ locked_by: null, locked_at: null });
+    console.log(`Unlocked ${unlocked.length} blocks`);
+    process.exit();
+  }
 
-    await this.db
-      .pg("transactions")
-      .where("id", transaction.id)
-      .update({ status: "locked" });
+  getTransactions() {
+    return this.db.pg.transaction(async trx => {
+      const txns = await trx
+        .select()
+        .from("transactions")
+        .where({ status: "imported" })
+        .limit(BATCH_SIZE);
 
-    return transaction;
+      const hashes = txns.map(txn => txn.hash);
+
+      trx
+        .select()
+        .from("transactions")
+        .whereIn("hash", hashes)
+        .update({
+          locked_by: this.pid,
+          locked_at: this.db.pg.fn.now()
+        });
+
+      return txns;
+    });
+  }
+
+  async importTransactions(transactions) {
+    await Promise.all(
+      transactions.map(transaction => {
+        return this.importTransaction(transaction);
+      })
+    );
   }
 
   async importTransaction(transaction) {

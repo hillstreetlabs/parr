@@ -4,7 +4,7 @@ import upsert from "../util/upsert";
 
 const batchSize = 20;
 
-export default class BlockImporter {
+export default class BlockDownloader {
   constructor(db, options) {
     this.db = db;
     this.timer;
