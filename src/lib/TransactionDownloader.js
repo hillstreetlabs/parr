@@ -88,7 +88,7 @@ export default class TransactionDownloader {
     }
 
     const logs = receipt.logs.map((log, index) => {
-      return this.parseLog(log, decoded[index]);
+      return this.logJson(log, decoded[index]);
     });
 
     const savedTransaction = await upsert(
@@ -102,7 +102,7 @@ export default class TransactionDownloader {
     return true;
   }
 
-  parseLog(log, decoded = {}) {
+  logJson(log, decoded = {}) {
     return {
       address: log.address,
       data: log.data,
