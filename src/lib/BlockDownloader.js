@@ -2,7 +2,7 @@ import Eth from "ethjs";
 import { action, computed, observable } from "mobx";
 import upsert from "../util/upsert";
 
-const batchSize = 20;
+const BATCH_SIZE = 20;
 
 export default class BlockDownloader {
   constructor(db, options) {
@@ -42,7 +42,7 @@ export default class BlockDownloader {
         .from("blocks")
         .where({ status: "imported" })
         .returning("number")
-        .limit(batchSize);
+        .limit(BATCH_SIZE);
       const numbers = blocks.map(block => block.number);
       return trx
         .select()

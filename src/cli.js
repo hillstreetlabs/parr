@@ -64,7 +64,7 @@ program
   });
 
 program
-  .command("txn-download")
+  .command("downloadTxns")
   .description("download transaction(s) from Ethereum to Parr")
   .action(async options => {
     const db = await initDb();
