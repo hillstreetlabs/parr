@@ -8,13 +8,14 @@ export default class BlockImporter {
   }
 
   async watch() {
-    console.log("watch!");
-    let current;
+    let current = (await this.db.web3.blockNumber()).toNumber();
+    console.log(`Started watch from block ${current}`);
+    this.importBlock(current);
     setInterval(async () => {
       const latest = (await this.db.web3.blockNumber()).toNumber();
-      if (latest != current) {
-        await this.importBlock(latest);
-        current = latest;
+      while (latest > current) {
+        current += 1;
+        this.importBlock(current);
       }
     }, 5000);
   }
