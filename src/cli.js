@@ -8,10 +8,10 @@ import clui from "clui";
 import { observe } from "mobx";
 import initDb from "./db";
 
-import TransactionDownloader from "./lib/TransactionDownloader";
+import Indexer from "./lib/Indexer";
 import BlockImporter from "./lib/BlockImporter";
 import BlockDownloader from "./lib/BlockDownloader";
-import Indexer from "./lib/Indexer";
+import TransactionDownloader from "./lib/TransactionDownloader";
 
 program
   .command("watch")
@@ -89,7 +89,7 @@ program
   .action(async options => {
     const { elasticsearch } = await initDb();
     elasticsearch.resetIndices();
-    console.log(`Reset elasticsearch indices: ${indices}`);
+    console.log(`Reset elasticsearch indices`);
   });
 
 program.parse(process.argv);

@@ -1,6 +1,6 @@
 import Elasticsearch from "elasticsearch";
 
-export const indices = ["blocks", "transactions", "logs", "accounts"];
+const INDICES = ["blocks", "transactions", "logs", "accounts"];
 
 export default class ES {
   constructor() {
@@ -18,7 +18,7 @@ export default class ES {
   }
 
   resetIndices() {
-    indices.map(async indexName => {
+    INDICES.map(async indexName => {
       const indexExists = await this.client.indices.exists({
         index: indexName
       });
