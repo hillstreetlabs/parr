@@ -47,7 +47,7 @@ export default class TransactionDownloader {
       const transactions = await trx
         .select()
         .from("transactions")
-        .where({ status: "imported" })
+        .where({ status: "imported", locked_by: null })
         .limit(BATCH_SIZE);
       const hashes = await trx
         .select()

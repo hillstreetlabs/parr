@@ -1,40 +1,29 @@
-import { action, computed, observable } from "mobx";
+import upsert from "../util/upsert";
+
+const BATCH_SIZE = 2;
 
 export default class Indexer {
-  @observable totalIndexed = 0;
-
   constructor(db, options) {
     this.db = db;
-    if (options.last) {
-      this.fromBlock = db.latestBlock - options.last + 1;
-      this.toBlock = db.latestBlock;
-    } else if (options.block) {
-      this.fromBlock = this.toBlock = options.block;
+    this.timer;
+    this.pid = `Indexer@${process.pid}`;
+  }
+
+  async run(delay = 1000) {
+    let transactions = await this.getTransactions();
+    if (transactions.length > 0) {
+      await this.indexTransactions(transactions);
+      this.run();
     } else {
-      this.fromBlock = options.from || 1;
-      this.toBlock = options.to || db.latestBlock;
+      console.log(`No downloaded transactions found, waiting ${delay}ms`);
+      this.timer = setTimeout(() => this.run(Math.floor(delay * 1.25)), delay);
     }
-    if (this.toBlock < this.fromBlock)
-      throw "toBlock must be greater than or equal to fromBlock";
   }
 
-  @computed
-  get indexedPerc() {
-    if (this.total == 0) return 0;
-    return this.totalIndexed / this.total;
+  async indexTransactions(transactions) {
+    // TODO: Integrate index function
   }
 
-  get total() {
-    return this.toBlock - this.fromBlock + 1;
-  }
-
-  get blockRange() {
-    return Array(this.toBlock - this.fromBlock + 1)
-      .fill()
-      .map((_, idx) => this.fromBlock + idx);
-  }
-
-  @action
   async index() {
     const response = await this.db.pg
       .from("blocks")
@@ -54,5 +43,41 @@ export default class Indexer {
     );
 
     this.totalIndexed = response.length;
+  }
+
+  getTransactions() {
+    return this.db.pg.transaction(async trx => {
+      const transactions = await trx
+        .select()
+        .from("transactions")
+        .where({ status: "downloaded", locked_by: null })
+        .limit(BATCH_SIZE);
+      const hashes = await trx
+        .select()
+        .from("transactions")
+        .whereIn("hash", transactions.map(transaction => transaction.hash))
+        .returning("hash")
+        .update({
+          locked_by: this.pid,
+          locked_at: this.db.pg.fn.now()
+        });
+      return transactions;
+    });
+  }
+
+  async exit() {
+    console.log("Exiting...");
+    clearTimeout(this.timer);
+    const unlocked = await this.db.pg
+      .select()
+      .from("transactions")
+      .where({ locked_by: this.pid })
+      .returning("hash")
+      .update({
+        locked_by: null,
+        locked_at: null
+      });
+    console.log(`Unlocked ${unlocked.length} transactions`);
+    process.exit();
   }
 }
