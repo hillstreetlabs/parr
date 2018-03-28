@@ -8,7 +8,7 @@ export default class BlockDownloader {
   constructor(db, options) {
     this.db = db;
     this.timer;
-    this.pid = `downloader@${process.pid}`;
+    this.pid = `BlockDownloader@${process.pid}`;
   }
 
   async run(delay = 1000) {
@@ -18,7 +18,7 @@ export default class BlockDownloader {
       this.run();
     } else {
       console.log(`No imported blocks found, waiting ${delay}ms`);
-      this.timer = setTimeout(() => this.run(delay * 1.5), delay);
+      this.timer = setTimeout(() => this.run(Math.floor(delay * 1.5)), delay);
     }
   }
 

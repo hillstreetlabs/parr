@@ -23,14 +23,14 @@ export default class BlockImporter {
     let currentBlock = fromBlock;
     while (currentBlock <= toBlock) {
       await this.saveBlock(currentBlock);
-      console.log(`Saved block ${currentBlock}`);
+      console.log(`Imported block ${currentBlock}`);
       currentBlock += 1;
     }
   }
 
   async importBlock(block) {
     await this.saveBlock(block);
-    console.log(`Saved block ${block}`);
+    console.log(`Imported block ${block}`);
   }
 
   saveBlock(number) {
