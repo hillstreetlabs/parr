@@ -79,7 +79,15 @@ export default class Indexer {
 
   async indexBlock(block, transactions) {
     try {
-      const parsedBlock = this.blockJson(block, transactions);
+      const logs = await Promise.all(
+        transactions.map(async transaction => {
+          return await this.db
+            .pg("logs")
+            .where({ transaction_hash: transaction.hash });
+        })
+      );
+
+      const parsedBlock = this.blockJson(block, transactions, logs);
 
       await this.db.elasticsearch.bulkIndex("blocks", "block", [parsedBlock]);
 
@@ -108,13 +116,9 @@ export default class Indexer {
         .where({ number: transaction.data.blockNumber })
         .first();
 
-      const parsedLogs = await this.indexLogs(transaction);
+      const logs = await this.indexLogs(transaction);
 
-      const parsedTransaction = this.transactionJson(
-        transaction,
-        block,
-        parsedLogs
-      );
+      const parsedTransaction = this.transactionJson(transaction, block, logs);
 
       await this.db.elasticsearch.bulkIndex("transactions", "transaction", [
         parsedTransaction
@@ -160,7 +164,7 @@ export default class Indexer {
       console.log(`Indexed log ${log.transaction_hash}:${log.log_index}`);
     });
 
-    return parsedLogs;
+    return logs;
   }
 
   logJson(log) {
@@ -178,18 +182,23 @@ export default class Indexer {
   }
 
   transactionJson(transaction, block, logs = []) {
+    const blockData =
+      block === undefined
+        ? {}
+        : {
+            hash: block.data.hash,
+            size: block.data.size,
+            miner: block.data.miner,
+            nonce: block.data.nonce,
+            gas_used: block.data.gasUsed,
+            gas_limit: block.data.gasLimit,
+            timestamp: block.data.timestamp,
+            difficulty: block.data.difficulty,
+            parent_hash: block.data.parentHash
+          };
+
     return {
-      block: {
-        hash: block.data.hash,
-        size: block.data.size,
-        miner: block.data.miner,
-        nonce: block.data.nonce,
-        gas_used: block.data.gasUsed,
-        gas_limit: block.data.gasLimit,
-        timestamp: block.data.timestamp,
-        difficulty: block.data.difficulty,
-        parent_hash: block.data.parentHash
-      },
+      block: blockData,
       block_hash: transaction.data.blockHash,
       block_number: transaction.data.blockNumber,
       contract_address: transaction.receipt.contractAddress,
@@ -205,12 +214,13 @@ export default class Indexer {
       to: transaction.data.to,
       transaction_index: transaction.data.transactionIndex,
       value: transaction.data.value,
-      logs: logs || []
+      logs: logs.map(log => {
+        return this.logJson(log);
+      })
     };
   }
 
-  // TODO: Add logs
-  blockJson(block, transactions = []) {
+  blockJson(block, transactions = [], logs = []) {
     return {
       difficulty: block.data.difficulty,
       gas_limit: block.data.gasLimit,
@@ -222,8 +232,8 @@ export default class Indexer {
       size: block.data.size,
       timestamp: block.data.timestamp,
       transaction_count: block.data.transactionCount,
-      transactions: transactions.map(transaction => {
-        return this.transactionJson(transaction, block);
+      transactions: transactions.map((transaction, index) => {
+        return this.transactionJson(transaction, undefined, logs[index]);
       })
     };
   }
