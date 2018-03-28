@@ -7,6 +7,8 @@ import program from "commander";
 import clui from "clui";
 import { observe } from "mobx";
 import initDb from "./db";
+
+import TransactionDownloader from "./lib/TransactionDownloader";
 import BlockImporter from "./lib/BlockImporter";
 import BlockDownloader from "./lib/BlockDownloader";
 import Indexer from "./lib/Indexer";
@@ -57,6 +59,16 @@ program
   .action(async options => {
     const db = await initDb();
     const downloader = new BlockDownloader(db);
+    downloader.run();
+    process.on("SIGINT", () => downloader.exit());
+  });
+
+program
+  .command("downloadTxns")
+  .description("download transaction(s) from Ethereum to Parr")
+  .action(async options => {
+    const db = await initDb();
+    const downloader = new TransactionDownloader(db);
     downloader.run();
     process.on("SIGINT", () => downloader.exit());
   });
