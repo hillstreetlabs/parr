@@ -7,6 +7,10 @@ exports.up = async (knex, Promise) => {
     table.integer("number");
     table.unique("number");
     table.index("number");
+    table.string("locked_by");
+    table.timestamp("locked_at");
+    table.string("downloaded_by");
+    table.timestamp("downloaded_at");
     table.timestamps();
   });
 
