@@ -34,11 +34,14 @@ export default ({ config, db }) => {
   });
 
   api.use("/transactions/:transactionId", async (req, res) => {
-    const tx = await db.web3.getTransactionReceipt(req.params.transactionId);
+    const receipt = await db.web3.getTransactionReceipt(
+      req.params.transactionId
+    );
+    const tx = await db.web3.getTransactionByHash(req.params.transactionId);
     const internals = await db.etherscan.account.txlistinternal(
       req.params.transactionId
     );
-    res.json({ tx, internals });
+    res.json({ transaction: tx, receipt, internals });
   });
 
   api.post("/search", async (req, res) => {

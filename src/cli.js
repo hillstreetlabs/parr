@@ -54,7 +54,7 @@ program
   });
 
 program
-  .command("download")
+  .command("downloadBlocks")
   .description("Download blocks that have only been imported")
   .action(async options => {
     const db = await initDb();

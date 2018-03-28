@@ -6,24 +6,23 @@ const ADDRESS_TO_ABI = {
   "0xa6d954d08877f8ce1224f6bfb83484c7d3abf8e9": Ethmoji.abi
 };
 
-const BATCH_SIZE = 20;
+const BATCH_SIZE = 50;
 
 export default class TransactionDownloader {
   constructor(db) {
     this.db = db;
     this.timer;
-    this.pid = `downloader@${process.pid}`;
+    this.pid = `TransactionDownloader@${process.pid}`;
   }
 
   async run(delay = 1000) {
-    let transactions = await this.getTransactions();
-
-    if (transactions.length > 0) {
-      await this.importTransactions(transactions);
+    let transactionHashes = await this.getTransactionHashes();
+    if (transactionHashes.length > 0) {
+      await this.importTransactions(transactionHashes);
       this.run();
     } else {
       console.log(`No imported transactions found, waiting ${delay}ms`);
-      this.timer = setTimeout(() => this.run(delay * 1.5), delay);
+      this.timer = setTimeout(() => this.run(Math.floor(delay * 1.5)), delay);
     }
   }
 
@@ -32,74 +31,77 @@ export default class TransactionDownloader {
     clearTimeout(this.timer);
     const unlocked = await this.db.pg
       .select()
-      .from("blocks")
+      .from("transactions")
       .where({ locked_by: this.pid })
-      .returning("number")
-      .update({ locked_by: null, locked_at: null });
-    console.log(`Unlocked ${unlocked.length} blocks`);
+      .returning("hash")
+      .update({
+        locked_by: null,
+        locked_at: null
+      });
+    console.log(`Unlocked ${unlocked.length} transactions`);
     process.exit();
   }
 
-  getTransactions() {
+  getTransactionHashes() {
     return this.db.pg.transaction(async trx => {
       const txns = await trx
         .select()
         .from("transactions")
         .where({ status: "imported" })
         .limit(BATCH_SIZE);
-
-      const hashes = txns.map(txn => txn.hash);
-
-      trx
+      const hashes = await trx
         .select()
         .from("transactions")
-        .whereIn("hash", hashes)
+        .whereIn("hash", txns.map(txn => txn.hash))
+        .returning("hash")
         .update({
           locked_by: this.pid,
           locked_at: this.db.pg.fn.now()
         });
-
-      return txns;
+      return hashes;
     });
   }
 
-  async importTransactions(transactions) {
+  async importTransactions(transactionHashes) {
     await Promise.all(
-      transactions.map(transaction => {
-        return this.importTransaction(transaction);
+      transactionHashes.map(hash => {
+        return this.importTransaction(hash);
       })
     );
   }
 
-  async importTransaction(transaction) {
-    const receipt = await this.db.web3.getTransactionReceipt(transaction.hash);
+  async importTransaction(transactionHash) {
+    try {
+      const receipt = await this.db.web3.getTransactionReceipt(transactionHash);
 
-    let decoded;
+      let decoded;
 
-    if (transaction.to in ADDRESS_TO_ABI) {
-      try {
-        const decoder = Eth.abi.logDecoder(ADDRESS_TO_ABI[transaction.to]);
-        decoded = decoder(receipt.logs);
-      } catch (error) {
+      if (receipt.to in ADDRESS_TO_ABI) {
+        try {
+          const decoder = Eth.abi.logDecoder(ADDRESS_TO_ABI[receipt.to]);
+          decoded = decoder(receipt.logs);
+        } catch (error) {
+          decoded = [];
+        }
+      } else {
         decoded = [];
       }
-    } else {
-      decoded = [];
+
+      const logs = receipt.logs.map((log, index) => {
+        return this.logJson(log, decoded[index]);
+      });
+
+      const transaction = await upsert(
+        this.db.pg,
+        "transactions",
+        this.transactionJson(receipt, logs),
+        "(hash)"
+      );
+
+      console.log(`Downloaded transaction ${transaction.hash}`);
+    } catch (err) {
+      console.log(`Failed to download transaction ${transactionHash}`, err);
     }
-
-    const logs = receipt.logs.map((log, index) => {
-      return this.logJson(log, decoded[index]);
-    });
-
-    const savedTransaction = await upsert(
-      this.db.pg,
-      "transactions",
-      this.transactionJson(transaction, receipt, logs),
-      "(hash)"
-    );
-
-    console.log(`Downloaded transaction ${transaction.hash}`);
-    return true;
   }
 
   logJson(log, decoded = {}) {
@@ -116,24 +118,25 @@ export default class TransactionDownloader {
     };
   }
 
-  transactionJson(transaction, receipt, logs = []) {
-    const { data } = transaction;
-
+  transactionJson(receipt, logs = []) {
     return {
-      hash: transaction.hash,
+      hash: receipt.transactionHash,
       status: "downloaded",
-      data: {
-        blockHash: data.blockHash,
-        blockNumber: data.blockNumber,
+      locked_by: null,
+      locked_at: null,
+      downloaded_by: this.pid,
+      downloaded_at: this.db.pg.fn.now(),
+      receipt: {
+        blockHash: receipt.blockHash,
+        blockNumber: receipt.blockNumber.toNumber(),
+        contractAddress: receipt.contractAddress,
         cumulativeGasUsed: receipt.cumulativeGasUsed.toString(10),
-        from: data.from,
-        gas: data.gas,
-        gasPrice: data.gasPrice,
+        from: receipt.from,
         gasUsed: receipt.gasUsed.toString(10),
-        nonce: data.nonce,
-        to: data.to,
-        transactionIndex: data.transactionIndex,
-        value: data.value,
+        to: receipt.to,
+        logsBloom: receipt.logsBloom,
+        status: receipt.status,
+        transactionIndex: receipt.transactionIndex,
         logs: logs || []
       }
     };
