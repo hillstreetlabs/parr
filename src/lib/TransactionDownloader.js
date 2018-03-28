@@ -72,7 +72,7 @@ export default class TransactionDownloader {
   }
 
   async importTransaction(transaction) {
-    const receipt = await eth.getTransactionReceipt(transaction.hash);
+    const receipt = await this.db.web3.getTransactionReceipt(transaction.hash);
 
     let decoded;
 
@@ -94,10 +94,11 @@ export default class TransactionDownloader {
     const savedTransaction = await upsert(
       this.db.pg,
       "transactions",
-      this.blockJson(transaction, receipt, logs),
+      this.transactionJson(transaction, receipt, logs),
       "(hash)"
     );
 
+    console.log(`Downloaded transaction ${transaction.hash}`);
     return true;
   }
 
@@ -123,16 +124,16 @@ export default class TransactionDownloader {
       status: "downloaded",
       data: {
         blockHash: data.blockHash,
-        blockNumber: data.blockNumber.toNumber(),
+        blockNumber: data.blockNumber,
         cumulativeGasUsed: receipt.cumulativeGasUsed.toString(10),
         from: data.from,
-        gas: data.gas.toString(10),
-        gasPrice: Eth.fromWei(data.gasPrice, "ether"),
+        gas: data.gas,
+        gasPrice: data.gasPrice,
         gasUsed: receipt.gasUsed.toString(10),
-        nonce: data.nonce.toString(10),
+        nonce: data.nonce,
         to: data.to,
-        transactionIndex: data.transactionIndex.toString(10),
-        value: Eth.fromWei(data.value, "ether"),
+        transactionIndex: data.transactionIndex,
+        value: data.value,
         logs: logs || []
       }
     };
