@@ -71,8 +71,7 @@ export default class Indexer {
           .where({ status: "indexed" });
 
         if (block.data.transactionCount === transactions.length) {
-          // await this.indexBlock(block, transactions);
-          return true;
+          await this.indexBlock(block, transactions);
         }
       })
     );
@@ -134,6 +133,10 @@ export default class Indexer {
     } catch (error) {
       console.log(`Failed to index transaction ${transaction.hash}`, error);
     }
+  }
+
+  async indexBlock(block, transactions) {
+    return true;
   }
 
   logJson(log) {

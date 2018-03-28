@@ -33,6 +33,8 @@ export default class ES {
       throw `ES index ${index} does not exist`;
     }
 
+    if (data.length === 0) return true;
+
     let bulkBody = [];
 
     data.forEach(item => {

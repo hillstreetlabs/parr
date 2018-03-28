@@ -73,7 +73,6 @@ export default class TransactionDownloader {
   async importTransaction(transactionHash) {
     try {
       const receipt = await this.db.web3.getTransactionReceipt(transactionHash);
-      console.log(receipt);
 
       const logs = await this.importLogs(receipt.to, receipt.logs);
 
