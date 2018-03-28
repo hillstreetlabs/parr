@@ -80,6 +80,7 @@ program
     const db = await initDb();
     const indexer = new Indexer(db, options);
     indexer.run();
+    process.on("SIGINT", () => indexer.exit());
   });
 
 program
