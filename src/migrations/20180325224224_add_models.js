@@ -30,6 +30,8 @@ exports.up = async (knex, Promise) => {
     table.timestamp("downloaded_at");
     table.string("indexed_by");
     table.timestamp("indexed_at");
+    table.string("block_hash");
+    table.index("block_hash");
     table.timestamps();
   });
 

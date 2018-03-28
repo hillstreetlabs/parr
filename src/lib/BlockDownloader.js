@@ -94,6 +94,7 @@ export default class BlockDownloader {
     return {
       hash: transaction.hash,
       status: "imported",
+      block_hash: transaction.blockHash,
       data: {
         blockHash: transaction.blockHash,
         blockNumber: transaction.blockNumber.toNumber(),

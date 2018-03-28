@@ -68,7 +68,7 @@ export default class Indexer {
 
         const transactions = await this.db
           .pg("transactions")
-          .where({ status: "indexed" });
+          .where({ status: "indexed", block_hash: block.data.hash });
 
         if (block.data.transactionCount === transactions.length) {
           await this.indexBlock(block, transactions);
@@ -104,7 +104,7 @@ export default class Indexer {
 
       console.log(`Indexed block ${block.number}`);
     } catch (error) {
-      console.log(`Failed to index block ${block.hash}`, error);
+      console.log(`Failed to index block ${block.number}`, error);
     }
   }
 
@@ -183,9 +183,8 @@ export default class Indexer {
 
   transactionJson(transaction, block, logs = []) {
     const blockData =
-      block === undefined
-        ? {}
-        : {
+      block.data !== undefined
+        ? {
             hash: block.data.hash,
             size: block.data.size,
             miner: block.data.miner,
@@ -195,7 +194,8 @@ export default class Indexer {
             timestamp: block.data.timestamp,
             difficulty: block.data.difficulty,
             parent_hash: block.data.parentHash
-          };
+          }
+        : {};
 
     return {
       block: blockData,
@@ -233,7 +233,7 @@ export default class Indexer {
       timestamp: block.data.timestamp,
       transaction_count: block.data.transactionCount,
       transactions: transactions.map((transaction, index) => {
-        return this.transactionJson(transaction, undefined, logs[index]);
+        return this.transactionJson(transaction, {}, logs[index]);
       })
     };
   }
