@@ -77,6 +77,29 @@ export default class Indexer {
     );
   }
 
+  async indexBlock(block, transactions) {
+    try {
+      const parsedBlock = this.blockJson(block, transactions);
+
+      await this.db.elasticsearch.bulkIndex("blocks", "block", [parsedBlock]);
+
+      await this.db
+        .pg("blocks")
+        .where({ number: block.number })
+        .update({
+          status: "indexed",
+          locked_by: null,
+          locked_at: null,
+          indexed_by: this.pid,
+          indexed_at: this.db.pg.fn.now()
+        });
+
+      console.log(`Indexed block ${block.number}`);
+    } catch (error) {
+      console.log(`Failed to index block ${block.hash}`, error);
+    }
+  }
+
   async indexTransaction(transaction) {
     try {
       // TODO: Should these be locked?
@@ -128,15 +151,10 @@ export default class Indexer {
           indexed_by: this.pid,
           indexed_at: this.db.pg.fn.now()
         });
-
       console.log(`Indexed transaction ${transaction.hash}`);
     } catch (error) {
       console.log(`Failed to index transaction ${transaction.hash}`, error);
     }
-  }
-
-  async indexBlock(block, transactions) {
-    return true;
   }
 
   logJson(log) {
@@ -182,6 +200,25 @@ export default class Indexer {
       transaction_index: transaction.data.transactionIndex,
       value: transaction.data.value,
       logs: logs || []
+    };
+  }
+
+  // TODO: Add logs
+  blockJson(block, transactions = []) {
+    return {
+      difficulty: block.data.difficulty,
+      gas_limit: block.data.gasLimit,
+      gas_used: block.data.gasUsed,
+      hash: block.data.hash,
+      miner: block.data.miner,
+      nonce: block.data.nonce,
+      parent_Hash: block.data.parentHash,
+      size: block.data.size,
+      timestamp: block.data.timestamp,
+      transaction_count: block.data.transactionCount,
+      transactions: transactions.map(transaction => {
+        return this.transactionJson(transaction, block);
+      })
     };
   }
 }
