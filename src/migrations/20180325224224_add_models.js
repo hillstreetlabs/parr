@@ -59,6 +59,15 @@ exports.up = async (knex, Promise) => {
     table.jsonb("data");
     table.timestamps();
   });
+
+  await knex.schema.createTable("contracts", function(table) {
+    table.increments();
+    table.string("address");
+    table.unique("address");
+    table.index("address");
+    table.jsonb("abi");
+    table.timestamps();
+  });
 };
 
 exports.down = async (knex, Promise) => {
@@ -67,4 +76,5 @@ exports.down = async (knex, Promise) => {
   await knex.schema.dropTable("logs");
   await knex.schema.dropTable("internal_transactions");
   await knex.schema.dropTable("addresses");
+  await knex.schema.dropTable("contracts");
 };
