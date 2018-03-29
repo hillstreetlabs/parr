@@ -5,8 +5,10 @@ exports.up = async (knex, Promise) => {
     table.index("status");
     table.jsonb("data");
     table.integer("number");
-    table.unique("number");
     table.index("number");
+    table.string("hash");
+    table.index("hash");
+    table.unique("hash");
     table.string("locked_by");
     table.timestamp("locked_at");
     table.string("downloaded_by");
@@ -22,6 +24,8 @@ exports.up = async (knex, Promise) => {
     table.string("hash");
     table.unique("hash");
     table.index("hash");
+    table.string("block_hash");
+    table.index("block_hash");
     table.string("locked_by");
     table.timestamp("locked_at");
     table.string("downloaded_by");
