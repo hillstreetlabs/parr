@@ -28,6 +28,16 @@ export default class ES {
     return true;
   }
 
+  count(index) {
+    this.client
+      .count({
+        index: index
+      })
+      .then(response => {
+        console.log(`There are ${response.count} documents in index ${index}`);
+      });
+  }
+
   async bulkIndex(index, type, data) {
     if (!await this.client.indices.exists({ index: index })) {
       throw `ES index ${index} does not exist`;
@@ -38,6 +48,7 @@ export default class ES {
     let bulkBody = [];
 
     data.forEach(item => {
+      // Select the document to index
       bulkBody.push({
         index: {
           _index: index,
@@ -46,6 +57,7 @@ export default class ES {
         }
       });
 
+      // Index the data
       bulkBody.push(item);
     });
 
