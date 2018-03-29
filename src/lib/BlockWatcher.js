@@ -73,7 +73,7 @@ class BlockHistory {
 
   @action
   addBlock(block) {
-    if (!this.blocks.get(block.hash))
+    if (!this.blocks.has(block.hash))
       this.blocks.set(block.hash, new Block(this, block));
     const blockNumber = block.number.toNumber();
     if (blockNumber > this.lastNumber) {
