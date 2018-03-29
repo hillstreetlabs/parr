@@ -7,6 +7,7 @@ const ADDRESS_TO_ABI = {
 };
 
 const BATCH_SIZE = 50;
+const DELAY = 5000;
 
 export default class TransactionDownloader {
   constructor(db) {
@@ -15,14 +16,14 @@ export default class TransactionDownloader {
     this.pid = `TransactionDownloader@${process.pid}`;
   }
 
-  async run(delay = 1000) {
+  async run() {
     let transactionHashes = await this.getTransactionHashes();
     if (transactionHashes.length > 0) {
       await this.importTransactions(transactionHashes);
       this.run();
     } else {
-      console.log(`No imported transactions found, waiting ${delay}ms`);
-      this.timer = setTimeout(() => this.run(Math.floor(delay * 1.5)), delay);
+      console.log(`No imported transactions found, waiting ${DELAY}ms`);
+      this.timer = setTimeout(() => this.run(), DELAY);
     }
   }
 
@@ -85,8 +86,25 @@ export default class TransactionDownloader {
 
       console.log(`Downloaded transaction ${transaction.hash}`);
     } catch (err) {
-      console.log(`Failed to download transaction ${transactionHash}`, err);
+      console.log(
+        `Failed to getTransactionReceipt for ${transactionHash}, un-locking...`
+      );
+      return this.unlockTransaction(transactionHash);
     }
+  }
+
+  async unlockTransaction(hash) {
+    const unlocked = await upsert(
+      this.db.pg,
+      "transactions",
+      {
+        hash,
+        locked_by: null,
+        locked_at: null
+      },
+      "(hash)"
+    );
+    return unlocked;
   }
 
   async importLogs(toAddress, logs) {

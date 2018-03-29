@@ -10,6 +10,7 @@ import initDb from "./db";
 
 import TransactionDownloader from "./lib/TransactionDownloader";
 import BlockImporter from "./lib/BlockImporter";
+import BlockWatcher from "./lib/BlockWatcher";
 import BlockDownloader from "./lib/BlockDownloader";
 import Indexer from "./lib/Indexer";
 
@@ -18,8 +19,8 @@ program
   .description("watch for new blocks and import them")
   .action(async options => {
     const db = await initDb();
-    const importer = new BlockImporter(db);
-    importer.watch();
+    const watcher = new BlockWatcher(db);
+    watcher.run();
   });
 
 program
