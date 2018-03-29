@@ -34,7 +34,9 @@ export default class ES {
         index: index
       })
       .then(response => {
-        console.log(`There are ${response.count} documents in index ${index}`);
+        console.log(
+          `There are ${response.count} documents in the ${index} index`
+        );
       });
   }
 
@@ -50,7 +52,7 @@ export default class ES {
     data.forEach(item => {
       // Select the document to index
       bulkBody.push({
-        index: {
+        update: {
           _index: index,
           _type: type,
           _id: item.id
@@ -58,7 +60,7 @@ export default class ES {
       });
 
       // Index the data
-      bulkBody.push(item);
+      bulkBody.push({ doc: item, doc_as_upsert: true });
     });
 
     return this.client
