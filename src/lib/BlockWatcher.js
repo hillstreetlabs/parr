@@ -29,9 +29,9 @@ class Block {
 
   @computed
   get children() {
-    return this.history.blocks
-      .values()
-      .filter(block => block.parentHash == this.hash);
+    return Array.from(this.history.blocks.values()).filter(
+      block => block.parentHash == this.hash
+    );
   }
 
   @computed
@@ -52,12 +52,11 @@ class Block {
 }
 
 class BlockHistory {
-  //@observable blocks = new Map();
+  @observable blocks = new Map();
   @observable lastNumber = 0;
 
   constructor(props) {
     this.onNewBlock = props.onNewBlock;
-    this.blocks = observable.map();
   }
 
   @action
