@@ -94,16 +94,12 @@ export default class BlockDownloader {
   }
 
   async unlockBlock(blockHash) {
-    return upsert(
-      this.db.pg,
-      "blocks",
-      {
-        hash: blockHash,
-        locked_by: null,
-        locked_at: null
-      },
-      "(hash)"
-    );
+    const unlocked = await this.db
+      .pg("blocks")
+      .where("hash", hash)
+      .returning("hash")
+      .update({ locked_by: null, locked_at: null });
+    return unlocked;
   }
 
   decodeTimeField(field) {

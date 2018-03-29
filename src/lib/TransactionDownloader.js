@@ -94,16 +94,11 @@ export default class TransactionDownloader {
   }
 
   async unlockTransaction(hash) {
-    const unlocked = await upsert(
-      this.db.pg,
-      "transactions",
-      {
-        hash,
-        locked_by: null,
-        locked_at: null
-      },
-      "(hash)"
-    );
+    const unlocked = await this.db
+      .pg("transactions")
+      .where("hash", hash)
+      .returning("hash")
+      .update({ locked_by: null, locked_at: null });
     return unlocked;
   }
 
