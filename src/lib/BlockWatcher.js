@@ -3,8 +3,6 @@ import { action, computed, when, observable } from "mobx";
 import upsert from "../util/upsert";
 
 class Block {
-  @observable children = [];
-
   constructor(history, data) {
     this.history = history;
     this.number = data.number.toNumber();
@@ -26,12 +24,14 @@ class Block {
   }
 
   get parent() {
-    return this.history.blocks[this.parentHash];
+    return this.history.blocks.get(this.parentHash);
   }
 
-  @action
-  addChild(block) {
-    this.children = [...this.children, block];
+  @computed
+  get children() {
+    return Array.from(this.history.blocks.values()).filter(
+      block => block.parentHash == this.hash
+    );
   }
 
   @computed
@@ -52,32 +52,29 @@ class Block {
 }
 
 class BlockHistory {
-  @observable blocks = {};
+  @observable blocks = new Map();
   @observable lastNumber = 0;
 
-  constructor(newBlockCallback) {
-    this.newBlockCallback = newBlockCallback;
+  constructor(props) {
+    this.onNewBlock = props.onNewBlock;
   }
 
   @action
   importBlock(hash) {
-    this.newBlockCallback(this.blocks[hash]);
+    this.onNewBlock(this.blocks.get(hash));
     this.flushBlock(hash);
   }
 
   @action
   flushBlock(hash) {
     console.log("Flush block", hash);
-    delete this.blocks[hash];
+    this.blocks.delete(hash);
   }
 
   @action
   addBlock(block) {
-    if (!this.blocks[block.hash]) {
-      const newBlock = new Block(this, block);
-      this.blocks[block.hash] = newBlock;
-      if (newBlock.parent) newBlock.parent.addChild(newBlock);
-    }
+    if (!this.blocks.get(block.hash))
+      this.blocks.set(block.hash, new Block(this, block));
     const blockNumber = block.number.toNumber();
     if (blockNumber > this.lastNumber) {
       this.lastNumber = blockNumber;
@@ -86,8 +83,7 @@ class BlockHistory {
 
   print() {
     console.log("Last number", this.lastNumber, Date.now());
-    Object.keys(this.blocks).forEach(key => {
-      let value = this.blocks[key];
+    this.blocks.forEach((value, key) => {
       console.log("Block", value.toString());
     });
   }
@@ -99,7 +95,9 @@ export default class BlockWatcher {
   }
 
   async run() {
-    const history = new BlockHistory(block => this.saveBlock(block));
+    const history = new BlockHistory({
+      onNewBlock: block => this.saveBlock(block)
+    });
     history.print();
     setInterval(async () => {
       const latest = await this.db.web3.getBlockByNumber("latest", true);
