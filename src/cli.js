@@ -119,6 +119,7 @@ program
         updated_at: creationTime
       });
     console.log(`Done.`);
+    db.pg.destroy();
   })
 
 program.parse(process.argv);
