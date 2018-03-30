@@ -1,6 +1,7 @@
 import upsert from "../util/upsert";
 
 const BATCH_SIZE = 50;
+const DELAY = 5000;
 
 export default class Indexer {
   constructor(db, options) {
@@ -16,7 +17,7 @@ export default class Indexer {
       this.run();
     } else {
       console.log(`No downloaded transactions found, waiting ${delay}ms`);
-      this.timer = setTimeout(() => this.run(Math.floor(delay * 1.25)), delay);
+      this.timer = setTimeout(() => this.run(), DELAY);
     }
   }
 
@@ -138,15 +139,7 @@ export default class Indexer {
       await this.indexBlock(block);
     } catch (error) {
       console.log(`Failed to index transaction ${transaction.hash}`, error);
-
-      await this.db
-        .pg("transactions")
-        .where({ hash: transaction.hash })
-        .first()
-        .update({
-          locked_by: null,
-          locked_at: null
-        });
+      return this.unlockTransaction(transaction.hash);
     }
   }
 
@@ -176,6 +169,15 @@ export default class Indexer {
     } catch (error) {
       console.log(`Failed to index block ${block.number}`, error);
     }
+  }
+
+  async unlockTransaction(hash) {
+    const unlocked = await this.db
+      .pg("transactions")
+      .where("hash", hash)
+      .returning("hash")
+      .update({ locked_by: null, locked_at: null });
+    return unlocked;
   }
 
   logJson(log, block) {
