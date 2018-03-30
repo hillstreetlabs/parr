@@ -63,39 +63,17 @@ export default class TransactionIndexer {
     );
   }
 
-  async fetchTransactionData(transaction) {
-    const block = await this.db
-      .pg("blocks")
-      .where({ hash: transaction.data.blockHash })
-      .first();
-
-    const logs = await this.db
-      .pg("logs")
-      .where({ transaction_hash: transaction.hash });
-
-    return { block, logs };
-  }
-
-  parseTransactionData(transaction, block, logs) {
-    const parsedTransaction = transactionJson(transaction, block, logs);
-    const parsedLogs = logs.map(log => {
-      return logJson(log, block);
-    });
-
-    return { parsedTransaction, parsedLogs };
-  }
-
   async indexTransaction(transaction) {
     try {
-      const { block, logs } = await this.fetchTransactionData(transaction);
-      const { parsedTransaction, parsedLogs } = this.parseTransactionData(
-        transaction,
-        block,
-        logs
-      );
+      transaction = await this.fetchTransactionData(transaction);
+      const parsedTransaction = transactionJson(transaction);
 
       // Index logs and update status
-      await this.db.elasticsearch.bulkIndex("logs", "log", parsedLogs);
+      await this.db.elasticsearch.bulkIndex(
+        "logs",
+        "log",
+        parsedTransaction.logs
+      );
       await this.db
         .pg("logs")
         .where({ transaction_hash: transaction.hash })
@@ -123,11 +101,33 @@ export default class TransactionIndexer {
         });
       console.log(`Indexed transaction ${transaction.hash}`);
 
-      await this.prepareBlockForIndexing(block);
+      await this.prepareBlockForIndexing(transaction.block);
     } catch (error) {
       console.log(`Failed to index transaction ${transaction.hash}`, error);
       return this.unlockTransaction(transaction.hash);
     }
+  }
+
+  async fetchTransactionData(transaction) {
+    transaction.block = await this.db
+      .pg("blocks")
+      .where({ hash: transaction.data.blockHash })
+      .first();
+
+    transaction.logs = await this.db
+      .pg("logs")
+      .where({ transaction_hash: transaction.hash });
+
+    return transaction;
+  }
+
+  parseTransactionData(transaction, block, logs) {
+    const parsedTransaction = transactionJson(transaction, block, logs);
+    const parsedLogs = logs.map(log => {
+      return logJson(log, block);
+    });
+
+    return { parsedTransaction, parsedLogs };
   }
 
   async prepareBlockForIndexing(block) {

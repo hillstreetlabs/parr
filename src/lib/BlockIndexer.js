@@ -61,23 +61,21 @@ export default class BlockIndexer {
     await Promise.all(blocks.map(block => this.indexBlock(block)));
   }
 
-  async fetchBlockData(blockHash) {
-    return await Promise.all([
-      this.db
-        .pg("transactions")
-        .where({ status: "indexed", block_hash: blockHash }),
-      this.db.pg("logs").where({ block_hash: blockHash })
-    ]);
+  async fetchBlockData(block) {
+    block.transactions = await this.db
+      .pg("transactions")
+      .where({ status: "indexed", block_hash: block.hash });
+    block.logs = this.db.pg("logs").where({ block_hash: block.hash });
+
+    return block;
   }
 
   async indexBlock(block) {
     try {
-      const [transactions, logs] = await this.fetchBlockData(block.hash);
-
       await this.db.elasticsearch.bulkIndex(
         "blocks",
         "block",
-        blockJson(block, transactions, logs)
+        blockJson(await this.fetchBlockData(block))
       );
       await this.db
         .pg("blocks")
