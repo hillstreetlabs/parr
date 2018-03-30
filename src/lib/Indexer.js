@@ -98,7 +98,7 @@ export default class Indexer {
 
   async indexTransaction(transaction) {
     try {
-      const { block, logs } = this.fetchTransactionData(transaction);
+      const { block, logs } = await this.fetchTransactionData(transaction);
       const { parsedTransaction, parsedLogs } = this.parseTransactionData(
         transaction,
         block,
