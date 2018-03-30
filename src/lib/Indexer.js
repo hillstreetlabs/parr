@@ -156,7 +156,7 @@ export default class Indexer {
       await this.db.elasticsearch.bulkIndex("blocks", "block", parsedBlock);
       await this.db
         .pg("blocks")
-        .where({ number: block.number })
+        .where({ hash: block.hash })
         .update({
           status: "indexed",
           locked_by: null,
