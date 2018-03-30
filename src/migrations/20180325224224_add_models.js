@@ -49,6 +49,8 @@ exports.up = async (knex, Promise) => {
     table.unique(["transaction_hash", "log_index"]);
     table.string("indexed_by");
     table.timestamp("indexed_at");
+    table.string("block_hash");
+    table.index("block_hash");
     table.timestamps();
   });
 

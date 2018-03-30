@@ -1,4 +1,4 @@
-import upsert from "../util/upsert";
+import { blockJson } from "../util/esJson";
 
 const BATCH_SIZE = 50;
 const DELAY = 5000;
@@ -16,7 +16,7 @@ export default class BlockIndexer {
       await this.indexBlocks(blocks);
       this.run();
     } else {
-      console.log(`No ready blocks found, waiting ${DELAY}ms`);
+      console.log(`No indexable blocks found, waiting ${DELAY}ms`);
       this.timer = setTimeout(() => this.run(), DELAY);
     }
   }
@@ -42,7 +42,7 @@ export default class BlockIndexer {
       const blocks = await trx
         .select()
         .from("blocks")
-        .where({ status: "ready", locked_by: null })
+        .where({ status: "indexable", locked_by: null })
         .limit(BATCH_SIZE);
       const hashes = await trx
         .select()
@@ -58,34 +58,27 @@ export default class BlockIndexer {
   }
 
   async indexBlocks(blocks) {
-    await Promise.all(
-      blocks.map(async block => {
-        await this.indexBlock(block);
-      })
-    );
+    await Promise.all(blocks.map(block => this.indexBlock(block)));
   }
 
-  async fetchBlockData(block) {
-    const transactions = await this.db
-      .pg("transactions")
-      .where({ status: "indexed", block_hash: block.hash });
-
-    const logs = await Promise.all(
-      transactions.map(async transaction => {
-        return await this.db
-          .pg("logs")
-          .where({ transaction_hash: transaction.hash });
-      })
-    );
-
-    return { transactions, logs };
+  async fetchBlockData(blockHash) {
+    return await Promise.all([
+      this.db
+        .pg("transactions")
+        .where({ status: "indexed", block_hash: blockHash }),
+      this.db.pg("logs").where({ block_hash: blockHash })
+    ]);
   }
 
   async indexBlock(block) {
     try {
-      const { transactions, logs } = this.fetchBlockData(block);
-      const parsedBlock = this.blockJson(block, transactions, logs);
-      await this.db.elasticsearch.bulkIndex("blocks", "block", parsedBlock);
+      const [transactions, logs] = await this.fetchBlockData(block.hash);
+
+      await this.db.elasticsearch.bulkIndex(
+        "blocks",
+        "block",
+        blockJson(block, transactions, logs)
+      );
       await this.db
         .pg("blocks")
         .where({ hash: block.hash })
@@ -111,85 +104,5 @@ export default class BlockIndexer {
       .returning("hash")
       .update({ locked_by: null, locked_at: null });
     return unlocked;
-  }
-
-  logJson(log, block) {
-    return {
-      block: {
-        hash: block.data.hash,
-        size: block.data.size,
-        miner: block.data.miner,
-        nonce: block.data.nonce,
-        gas_used: block.data.gasUsed,
-        gas_limit: block.data.gasLimit,
-        timestamp: block.data.timestamp,
-        difficulty: block.data.difficulty,
-        parent_hash: block.data.parentHash
-      },
-      address: log.data.address,
-      data: log.data.data,
-      block_hash: log.data.blockHash,
-      block_number: log.data.blockNumber,
-      decoded: log.decoded,
-      id: log.id,
-      log_index: log.log_index,
-      removed: log.data.removed,
-      transaction_hash: log.transaction_hash,
-      transaction_index: log.data.transactionIndex
-    };
-  }
-
-  transactionJson(transaction, block, logs = []) {
-    return {
-      block: {
-        hash: block.data.hash,
-        size: block.data.size,
-        miner: block.data.miner,
-        nonce: block.data.nonce,
-        gas_used: block.data.gasUsed,
-        gas_limit: block.data.gasLimit,
-        timestamp: block.data.timestamp,
-        difficulty: block.data.difficulty,
-        parent_hash: block.data.parentHash
-      },
-      block_hash: transaction.data.blockHash,
-      block_number: transaction.data.blockNumber,
-      contract_address: transaction.receipt.contractAddress,
-      cumulative_gas_used: transaction.receipt.cumulativeGasUsed,
-      from: transaction.data.from,
-      gas: transaction.data.gas,
-      gas_price: transaction.data.gasPrice,
-      gas_used: transaction.receipt.gasUsed,
-      hash: transaction.hash,
-      id: transaction.id,
-      logs_bloom: transaction.receipt.logsBloom,
-      nonce: transaction.data.nonce,
-      status: transaction.receipt.status,
-      to: transaction.data.to,
-      transaction_index: transaction.data.transactionIndex,
-      value: transaction.data.value,
-      logs: logs.map(log => {
-        return this.logJson(log, block);
-      })
-    };
-  }
-
-  blockJson(block, transactions = [], logs = []) {
-    return {
-      difficulty: block.data.difficulty,
-      gas_limit: block.data.gasLimit,
-      gas_used: block.data.gasUsed,
-      hash: block.data.hash,
-      id: block.id,
-      miner: block.data.miner,
-      nonce: block.data.nonce,
-      parent_Hash: block.data.parentHash,
-      size: block.data.size,
-      timestamp: block.data.timestamp,
-      transaction_count: block.data.transactionCount,
-      transactions: transactions.map((transaction, index) => {
-        return this.transactionJson(transaction, block, logs[index]);
-      })
-    };
   }
 }
