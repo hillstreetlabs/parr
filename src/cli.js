@@ -93,4 +93,32 @@ program
     console.log(`Reset elasticsearch indices`);
   });
 
+program
+  .command("importContract")
+  .description("import a contract ABI")
+  .option("-F, --file <dir>", "path to contract JSON with `abi` attribute")
+  .option("-A, --address <n>", "contract address on the chain")
+  .action(async (options) => {
+    const fs = require('fs');
+    const db = await initDb();
+
+    console.log(`Reading contract file…`);
+    const contractFileContent = fs.readFileSync(options.file);
+
+    console.log(`Parsing contract JSON…`);
+    const contractJSON = JSON.parse(contractFileContent);
+
+    console.log(`Inserting contract ABI…`);
+    const creationTime = new Date();
+    await db
+      .pg("contracts")
+      .insert({
+        address: options.address,
+        abi: JSON.stringify(contractJSON.abi),
+        created_at: creationTime,
+        updated_at: creationTime
+      });
+    console.log(`Done.`);
+  })
+
 program.parse(process.argv);
