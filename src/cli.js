@@ -90,7 +90,7 @@ program
   .action(async options => {
     const { elasticsearch } = await initDb();
     elasticsearch.resetIndices();
-    console.log(`Reset elasticsearch indices: ${indices}`);
+    console.log(`Reset elasticsearch indices`);
   });
 
 program.parse(process.argv);
