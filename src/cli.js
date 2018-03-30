@@ -109,8 +109,8 @@ program
   .description("import a contract ABI")
   .option("-F, --file <dir>", "path to contract JSON with `abi` attribute")
   .option("-A, --address <n>", "contract address on the chain")
-  .action(async (options) => {
-    const fs = require('fs');
+  .action(async options => {
+    const fs = require("fs");
     const db = await initDb();
 
     console.log(`Reading contract file…`);
@@ -120,15 +120,13 @@ program
     const contractJSON = JSON.parse(contractFileContent);
 
     console.log(`Inserting contract ABI…`);
-    await db
-      .pg("contracts")
-      .insert({
-        address: options.address,
-        abi: JSON.stringify(contractJSON.abi)
-      });
+    await db.pg("contracts").insert({
+      address: options.address,
+      abi: JSON.stringify(contractJSON.abi)
+    });
 
     console.log(`Done.`);
     db.pg.destroy();
-  })
+  });
 
 program.parse(process.argv);

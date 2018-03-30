@@ -121,15 +121,6 @@ export default class TransactionIndexer {
     return transaction;
   }
 
-  parseTransactionData(transaction, block, logs) {
-    const parsedTransaction = transactionJson(transaction, block, logs);
-    const parsedLogs = logs.map(log => {
-      return logJson(log, block);
-    });
-
-    return { parsedTransaction, parsedLogs };
-  }
-
   async prepareBlockForIndexing(block) {
     const transactions = await this.db
       .pg("transactions")
