@@ -15,7 +15,7 @@ exports.up = async (knex, Promise) => {
     table.timestamp("downloaded_at");
     table.string("indexed_by");
     table.timestamp("indexed_at");
-    table.timestamps();
+    table.timestamps(true, true);
   });
 
   await knex.schema.createTable("transactions", function(table) {
@@ -34,7 +34,7 @@ exports.up = async (knex, Promise) => {
     table.timestamp("downloaded_at");
     table.string("indexed_by");
     table.timestamp("indexed_at");
-    table.timestamps();
+    table.timestamps(true, true);
   });
 
   await knex.schema.createTable("logs", function(table) {
@@ -49,30 +49,29 @@ exports.up = async (knex, Promise) => {
     table.unique(["transaction_hash", "log_index"]);
     table.string("indexed_by");
     table.timestamp("indexed_at");
-    table.timestamps();
+    table.timestamps(true, true);
   });
 
   await knex.schema.createTable("internal_transactions", function(table) {
     table.increments();
     table.string("status");
     table.jsonb("data");
-    table.timestamps();
+    table.timestamps(true, true);
   });
 
   await knex.schema.createTable("addresses", function(table) {
     table.increments();
     table.string("status");
     table.jsonb("data");
-    table.timestamps();
+    table.timestamps(true, true);
   });
 
   await knex.schema.createTable("contracts", function(table) {
     table.increments();
     table.string("address");
-    table.unique("address");
     table.index("address");
     table.jsonb("abi");
-    table.timestamps();
+    table.timestamps(true, true);
   });
 };
 
