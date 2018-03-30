@@ -118,6 +118,7 @@ program
         created_at: creationTime,
         updated_at: creationTime
       });
+
     console.log(`Done.`);
     db.pg.destroy();
   })
