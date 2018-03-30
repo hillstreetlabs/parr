@@ -111,6 +111,7 @@ export default class BlockDownloader {
       hash: transaction.hash,
       block_hash: transaction.blockHash,
       status: "imported",
+      block_hash: transaction.blockHash,
       data: {
         blockHash: transaction.blockHash,
         blockNumber: transaction.blockNumber.toNumber(),
@@ -145,7 +146,8 @@ export default class BlockDownloader {
         nonce: block.nonce.toString(10),
         parentHash: block.parentHash,
         size: block.size.toString(10),
-        timestamp: this.decodeTimeField(block.timestamp)
+        timestamp: this.decodeTimeField(block.timestamp),
+        transactionCount: (block.transactions || []).length
       }
     };
   }

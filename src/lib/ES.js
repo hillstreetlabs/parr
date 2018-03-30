@@ -1,6 +1,6 @@
 import Elasticsearch from "elasticsearch";
 
-export const indices = ["blocks", "transactions", "logs", "accounts"];
+const INDICES = ["blocks", "transactions", "logs", "accounts"];
 
 export default class ES {
   constructor() {
@@ -18,7 +18,7 @@ export default class ES {
   }
 
   resetIndices() {
-    indices.map(async indexName => {
+    INDICES.map(async indexName => {
       const indexExists = await this.client.indices.exists({
         index: indexName
       });
@@ -28,23 +28,38 @@ export default class ES {
     return true;
   }
 
+  async count(index) {
+    const response = await this.client.count({
+      index: index
+    });
+
+    console.log(`There are ${response.count} documents in the ${index} index`);
+  }
+
   async bulkIndex(index, type, data) {
     if (!await this.client.indices.exists({ index: index })) {
       throw `ES index ${index} does not exist`;
     }
 
+    const toIndex = Array.isArray(data) ? data : [data];
+
+    if (toIndex.length === 0) return true;
+
     let bulkBody = [];
 
-    data.forEach(item => {
+    toIndex.forEach(item => {
+      // Select the document to index
       bulkBody.push({
-        index: {
+        update: {
           _index: index,
           _type: type,
           _id: item.id
         }
       });
 
-      bulkBody.push(item);
+      // Index the item
+      // Item format is { title: "foo", hash: "0x123ABC" }
+      bulkBody.push({ doc: item, doc_as_upsert: true });
     });
 
     return this.client

@@ -13,6 +13,8 @@ exports.up = async (knex, Promise) => {
     table.timestamp("locked_at");
     table.string("downloaded_by");
     table.timestamp("downloaded_at");
+    table.string("indexed_by");
+    table.timestamp("indexed_at");
     table.timestamps();
   });
 
@@ -30,6 +32,8 @@ exports.up = async (knex, Promise) => {
     table.timestamp("locked_at");
     table.string("downloaded_by");
     table.timestamp("downloaded_at");
+    table.string("indexed_by");
+    table.timestamp("indexed_at");
     table.timestamps();
   });
 
@@ -43,6 +47,8 @@ exports.up = async (knex, Promise) => {
     table.jsonb("data");
     table.jsonb("decoded");
     table.unique(["transaction_hash", "log_index"]);
+    table.string("indexed_by");
+    table.timestamp("indexed_at");
     table.timestamps();
   });
 
