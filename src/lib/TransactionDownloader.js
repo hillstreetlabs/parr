@@ -1,10 +1,5 @@
 import Eth from "ethjs";
 import upsert from "../util/upsert";
-import { Ethmoji } from "ethmoji-contracts";
-
-const ADDRESS_TO_ABI = {
-  "0xa6d954d08877f8ce1224f6bfb83484c7d3abf8e9": Ethmoji.abi
-};
 
 const BATCH_SIZE = 50;
 const DELAY = 5000;
@@ -104,9 +99,13 @@ export default class TransactionDownloader {
 
   async importLogs(toAddress, logs) {
     let decoded;
-    if (toAddress in ADDRESS_TO_ABI) {
+    const contract = await this.db
+      .pg("contracts")
+      .where("address", toAddress)
+      .first();
+    if (contract) {
       try {
-        const decoder = Eth.abi.logDecoder(ADDRESS_TO_ABI[toAddress]);
+        const decoder = Eth.abi.logDecoder(contract.abi);
         decoded = decoder(logs);
       } catch (error) {
         decoded = [];
