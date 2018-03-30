@@ -160,7 +160,7 @@ export default class Indexer {
     try {
       const logs = this.fetchBlockTransactionLogs(transactions);
       const parsedBlock = this.blockJson(block, transactions, logs);
-      await this.db.elasticsearch.bulkIndex("blocks", "block", [parsedBlock]);
+      await this.db.elasticsearch.bulkIndex("blocks", "block", parsedBlock);
       await this.db
         .pg("blocks")
         .where({ number: block.number })
