@@ -69,7 +69,6 @@ exports.up = async (knex, Promise) => {
   await knex.schema.createTable("contracts", function(table) {
     table.increments();
     table.string("address");
-    table.unique("address");
     table.index("address");
     table.jsonb("abi");
     table.timestamps();
