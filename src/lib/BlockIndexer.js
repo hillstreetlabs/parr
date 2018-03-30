@@ -3,20 +3,20 @@ import upsert from "../util/upsert";
 const BATCH_SIZE = 50;
 const DELAY = 5000;
 
-export default class Indexer {
-  constructor(db, options) {
+export default class BlockIndexer {
+  constructor(db) {
     this.db = db;
     this.timer;
-    this.pid = `Indexer@${process.pid}`;
+    this.pid = `BlockIndexer@${process.pid}`;
   }
 
   async run() {
-    let transactions = await this.getTransactions();
-    if (transactions.length > 0) {
-      await this.indexTransactions(transactions);
+    let blocks = await this.getBlocks();
+    if (blocks.length > 0) {
+      await this.indexBlocks(blocks);
       this.run();
     } else {
-      console.log(`No downloaded transactions found, waiting ${DELAY}ms`);
+      console.log(`No ready blocks found, waiting ${DELAY}ms`);
       this.timer = setTimeout(() => this.run(), DELAY);
     }
   }
@@ -26,132 +26,64 @@ export default class Indexer {
     clearTimeout(this.timer);
     const unlocked = await this.db.pg
       .select()
-      .from("transactions")
+      .from("blocks")
       .where({ locked_by: this.pid })
       .returning("hash")
       .update({
         locked_by: null,
         locked_at: null
       });
-    console.log(`Unlocked ${unlocked.length} transactions`);
+    console.log(`Unlocked ${unlocked.length} blocks`);
     process.exit();
   }
 
-  getTransactions() {
+  getBlocks() {
     return this.db.pg.transaction(async trx => {
-      const transactions = await trx
+      const blocks = await trx
         .select()
-        .from("transactions")
-        .where({ status: "downloaded", locked_by: null })
+        .from("blocks")
+        .where({ status: "ready", locked_by: null })
         .limit(BATCH_SIZE);
       const hashes = await trx
         .select()
-        .from("transactions")
-        .whereIn("hash", transactions.map(transaction => transaction.hash))
+        .from("blocks")
+        .whereIn("hash", blocks.map(block => block.hash))
         .returning("hash")
         .update({
           locked_by: this.pid,
           locked_at: this.db.pg.fn.now()
         });
-      return transactions;
+      return blocks;
     });
   }
 
-  async indexTransactions(transactions) {
+  async indexBlocks(blocks) {
     await Promise.all(
-      transactions.map(async transaction => {
-        await this.indexTransaction(transaction);
+      blocks.map(async block => {
+        await this.indexBlock(block);
       })
     );
   }
 
-  async fetchTransactionData(transaction) {
-    const block = await this.db
-      .pg("blocks")
-      .where({ hash: transaction.data.blockHash })
-      .first();
+  async fetchBlockData(block) {
+    const transactions = await this.db
+      .pg("transactions")
+      .where({ status: "indexed", block_hash: block.hash });
 
-    const logs = await this.db
-      .pg("logs")
-      .where({ transaction_hash: transaction.hash });
-
-    return { block, logs };
-  }
-
-  async fetchBlockTransactionLogs(transactions) {
-    return await Promise.all(
+    const logs = await Promise.all(
       transactions.map(async transaction => {
         return await this.db
           .pg("logs")
           .where({ transaction_hash: transaction.hash });
       })
     );
-  }
 
-  parseTransactionData(transaction, block, logs) {
-    const parsedTransaction = this.transactionJson(transaction, block, logs);
-    const parsedLogs = logs.map(log => {
-      return this.logJson(log, block);
-    });
-
-    return { parsedTransaction, parsedLogs };
-  }
-
-  async indexTransaction(transaction) {
-    try {
-      const { block, logs } = await this.fetchTransactionData(transaction);
-      const { parsedTransaction, parsedLogs } = this.parseTransactionData(
-        transaction,
-        block,
-        logs
-      );
-
-      // Index logs and update status
-      await this.db.elasticsearch.bulkIndex("logs", "log", parsedLogs);
-      await this.db
-        .pg("logs")
-        .where({ transaction_hash: transaction.hash })
-        .update({
-          status: "indexed",
-          indexed_by: this.pid,
-          indexed_at: this.db.pg.fn.now()
-        });
-
-      // Index transactions and update status
-      await this.db.elasticsearch.bulkIndex(
-        "transactions",
-        "transaction",
-        parsedTransaction
-      );
-      await this.db
-        .pg("transactions")
-        .where({ hash: transaction.hash })
-        .update({
-          status: "indexed",
-          locked_by: null,
-          locked_at: null,
-          indexed_by: this.pid,
-          indexed_at: this.db.pg.fn.now()
-        });
-
-      console.log(`Indexed transaction ${transaction.hash}`);
-
-      await this.indexBlock(block);
-    } catch (error) {
-      console.log(`Failed to index transaction ${transaction.hash}`, error);
-      return this.unlockTransaction(transaction.hash);
-    }
+    return { transactions, logs };
   }
 
   async indexBlock(block) {
-    const transactions = await this.db
-      .pg("transactions")
-      .where({ status: "indexed", block_hash: block.data.hash });
-
-    if (block.data.transactionCount !== transactions.length) return true;
-
     try {
-      const logs = this.fetchBlockTransactionLogs(transactions);
+      const { transactions, logs } = this.fetchBlockData(block);
       const parsedBlock = this.blockJson(block, transactions, logs);
       await this.db.elasticsearch.bulkIndex("blocks", "block", parsedBlock);
       await this.db
@@ -165,15 +97,16 @@ export default class Indexer {
           indexed_at: this.db.pg.fn.now()
         });
 
-      console.log(`Indexed block ${block.number}`);
+      console.log(`Indexed block ${block.hash}`);
     } catch (error) {
-      console.log(`Failed to index block ${block.number}`, error);
+      console.log(`Failed to index block ${block.hash}`, error);
+      return await this.unlockBlock(block.hash);
     }
   }
 
-  async unlockTransaction(hash) {
+  async unlockBlock(hash) {
     const unlocked = await this.db
-      .pg("transactions")
+      .pg("blocks")
       .where("hash", hash)
       .returning("hash")
       .update({ locked_by: null, locked_at: null });
