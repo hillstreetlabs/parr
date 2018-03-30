@@ -109,14 +109,11 @@ program
     const contractJSON = JSON.parse(contractFileContent);
 
     console.log(`Inserting contract ABI…`);
-    const creationTime = new Date();
     await db
       .pg("contracts")
       .insert({
         address: options.address,
-        abi: JSON.stringify(contractJSON.abi),
-        created_at: creationTime,
-        updated_at: creationTime
+        abi: JSON.stringify(contractJSON.abi)
       });
 
     console.log(`Done.`);
