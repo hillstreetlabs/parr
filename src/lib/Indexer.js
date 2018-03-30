@@ -1,6 +1,6 @@
 import upsert from "../util/upsert";
 
-const BATCH_SIZE = 1;
+const BATCH_SIZE = 50;
 
 export default class Indexer {
   constructor(db, options) {
@@ -60,37 +60,107 @@ export default class Indexer {
     await Promise.all(
       transactions.map(async transaction => {
         await this.indexTransaction(transaction);
-
-        const block = await this.db
-          .pg("blocks")
-          .where({ number: transaction.data.blockNumber })
-          .first();
-
-        const transactions = await this.db
-          .pg("transactions")
-          .where({ status: "indexed", block_hash: block.data.hash });
-
-        if (block.data.transactionCount === transactions.length) {
-          await this.indexBlock(block, transactions);
-        }
       })
     );
   }
 
-  async indexBlock(block, transactions) {
+  async fetchTransactionData(transaction) {
+    const block = await this.db
+      .pg("blocks")
+      .where({ hash: transaction.data.blockHash })
+      .first();
+
+    const logs = await this.db
+      .pg("logs")
+      .where({ transaction_hash: transaction.hash });
+
+    return { block, logs };
+  }
+
+  async fetchBlockTransactionLogs(transactions) {
+    return await Promise.all(
+      transactions.map(async transaction => {
+        return await this.db
+          .pg("logs")
+          .where({ transaction_hash: transaction.hash });
+      })
+    );
+  }
+
+  parseTransactionData(transaction, block, logs) {
+    const parsedTransaction = this.transactionJson(transaction, block, logs);
+    const parsedLogs = logs.map(log => {
+      return this.logJson(log, block);
+    });
+
+    return { parsedTransaction, parsedLogs };
+  }
+
+  async indexTransaction(transaction) {
     try {
-      const logs = await Promise.all(
-        transactions.map(async transaction => {
-          return await this.db
-            .pg("logs")
-            .where({ transaction_hash: transaction.hash });
-        })
+      const { block, logs } = this.fetchTransactionData(transaction);
+      const { parsedTransaction, parsedLogs } = this.parseTransactionData(
+        transaction,
+        block,
+        logs
       );
 
+      // Index logs and update status
+      await this.db.elasticsearch.bulkIndex("logs", "log", parsedLogs);
+      await this.db
+        .pg("logs")
+        .where({ transaction_hash: transaction.hash })
+        .update({
+          status: "indexed",
+          indexed_by: this.pid,
+          indexed_at: this.db.pg.fn.now()
+        });
+
+      // Index transactions and update status
+      await this.db.elasticsearch.bulkIndex(
+        "transactions",
+        "transaction",
+        parsedTransaction
+      );
+      await this.db
+        .pg("transactions")
+        .where({ hash: transaction.hash })
+        .update({
+          status: "indexed",
+          locked_by: null,
+          locked_at: null,
+          indexed_by: this.pid,
+          indexed_at: this.db.pg.fn.now()
+        });
+
+      console.log(`Indexed transaction ${transaction.hash}`);
+
+      await this.indexBlock(block);
+    } catch (error) {
+      console.log(`Failed to index transaction ${transaction.hash}`, error);
+
+      await this.db
+        .pg("transactions")
+        .where({ hash: transaction.hash })
+        .first()
+        .update({
+          locked_by: null,
+          locked_at: null
+        });
+    }
+  }
+
+  async indexBlock(block) {
+    const transactions = await this.db
+      .pg("transactions")
+      .where({ status: "indexed", block_hash: block.data.hash });
+
+    if (block.data.transactionCount !== transactions.length) return true;
+
+    try {
+      const logs = this.fetchBlockTransactionLogs(transactions);
       const parsedBlock = this.blockJson(block, transactions, logs);
-
       await this.db.elasticsearch.bulkIndex("blocks", "block", [parsedBlock]);
-
       await this.db
         .pg("blocks")
         .where({ number: block.number })
@@ -108,67 +178,19 @@ export default class Indexer {
     }
   }
 
-  async indexTransaction(transaction) {
-    try {
-      // TODO: Should these be locked?
-      const block = await this.db
-        .pg("blocks")
-        .where({ number: transaction.data.blockNumber })
-        .first();
-
-      const logs = await this.indexLogs(transaction);
-
-      const parsedTransaction = this.transactionJson(transaction, block, logs);
-
-      await this.db.elasticsearch.bulkIndex("transactions", "transaction", [
-        parsedTransaction
-      ]);
-
-      await this.db
-        .pg("transactions")
-        .where({ hash: transaction.hash })
-        .update({
-          status: "indexed",
-          locked_by: null,
-          locked_at: null,
-          indexed_by: this.pid,
-          indexed_at: this.db.pg.fn.now()
-        });
-      console.log(`Indexed transaction ${transaction.hash}`);
-    } catch (error) {
-      console.log(`Failed to index transaction ${transaction.hash}`, error);
-    }
-  }
-
-  async indexLogs(transaction) {
-    const logs = await this.db
-      .pg("logs")
-      .where({ transaction_hash: transaction.hash });
-
-    const parsedLogs = logs.map(log => {
-      return this.logJson(log);
-    });
-
-    await this.db.elasticsearch.bulkIndex("logs", "log", parsedLogs);
-
-    await this.db
-      .pg("logs")
-      .where({ transaction_hash: transaction.hash })
-      .update({
-        status: "indexed",
-        indexed_by: this.pid,
-        indexed_at: this.db.pg.fn.now()
-      });
-
-    parsedLogs.forEach(log => {
-      console.log(`Indexed log ${log.transaction_hash}:${log.log_index}`);
-    });
-
-    return logs;
-  }
-
-  logJson(log) {
+  logJson(log, block) {
     return {
+      block: {
+        hash: block.data.hash,
+        size: block.data.size,
+        miner: block.data.miner,
+        nonce: block.data.nonce,
+        gas_used: block.data.gasUsed,
+        gas_limit: block.data.gasLimit,
+        timestamp: block.data.timestamp,
+        difficulty: block.data.difficulty,
+        parent_hash: block.data.parentHash
+      },
       address: log.data.address,
       data: log.data.data,
       block_hash: log.data.blockHash,
@@ -183,23 +205,18 @@ export default class Indexer {
   }
 
   transactionJson(transaction, block, logs = []) {
-    const blockData =
-      block.data !== undefined
-        ? {
-            hash: block.data.hash,
-            size: block.data.size,
-            miner: block.data.miner,
-            nonce: block.data.nonce,
-            gas_used: block.data.gasUsed,
-            gas_limit: block.data.gasLimit,
-            timestamp: block.data.timestamp,
-            difficulty: block.data.difficulty,
-            parent_hash: block.data.parentHash
-          }
-        : {};
-
     return {
-      block: blockData,
+      block: {
+        hash: block.data.hash,
+        size: block.data.size,
+        miner: block.data.miner,
+        nonce: block.data.nonce,
+        gas_used: block.data.gasUsed,
+        gas_limit: block.data.gasLimit,
+        timestamp: block.data.timestamp,
+        difficulty: block.data.difficulty,
+        parent_hash: block.data.parentHash
+      },
       block_hash: transaction.data.blockHash,
       block_number: transaction.data.blockNumber,
       contract_address: transaction.receipt.contractAddress,
@@ -217,7 +234,7 @@ export default class Indexer {
       transaction_index: transaction.data.transactionIndex,
       value: transaction.data.value,
       logs: logs.map(log => {
-        return this.logJson(log);
+        return this.logJson(log, block);
       })
     };
   }
@@ -236,7 +253,7 @@ export default class Indexer {
       timestamp: block.data.timestamp,
       transaction_count: block.data.transactionCount,
       transactions: transactions.map((transaction, index) => {
-        return this.transactionJson(transaction, {}, logs[index]);
+        return this.transactionJson(transaction, block, logs[index]);
       })
     };
   }
