@@ -8,7 +8,8 @@ import clui from "clui";
 import { observe } from "mobx";
 import initDb from "./db";
 
-import Indexer from "./lib/Indexer";
+import BlockIndexer from "./lib/BlockIndexer";
+import TransactionIndexer from "./lib/TransactionIndexer";
 import BlockImporter from "./lib/BlockImporter";
 import BlockWatcher from "./lib/BlockWatcher";
 import BlockDownloader from "./lib/BlockDownloader";
@@ -75,11 +76,21 @@ program
   });
 
 program
-  .command("index")
+  .command("indexTransactions")
+  .description("index transaction(s) from Parr PG instance to Parr ES instance")
+  .action(async options => {
+    const db = await initDb();
+    const indexer = new TransactionIndexer(db);
+    indexer.run();
+    process.on("SIGINT", () => indexer.exit());
+  });
+
+program
+  .command("indexBlocks")
   .description("index block(s) from Parr PG instance to Parr ES instance")
   .action(async options => {
     const db = await initDb();
-    const indexer = new Indexer(db, options);
+    const indexer = new BlockIndexer(db);
     indexer.run();
     process.on("SIGINT", () => indexer.exit());
   });
@@ -98,8 +109,8 @@ program
   .description("import a contract ABI")
   .option("-F, --file <dir>", "path to contract JSON with `abi` attribute")
   .option("-A, --address <n>", "contract address on the chain")
-  .action(async (options) => {
-    const fs = require('fs');
+  .action(async options => {
+    const fs = require("fs");
     const db = await initDb();
 
     console.log(`Reading contract file…`);
@@ -109,15 +120,13 @@ program
     const contractJSON = JSON.parse(contractFileContent);
 
     console.log(`Inserting contract ABI…`);
-    await db
-      .pg("contracts")
-      .insert({
-        address: options.address,
-        abi: JSON.stringify(contractJSON.abi)
-      });
+    await db.pg("contracts").insert({
+      address: options.address,
+      abi: JSON.stringify(contractJSON.abi)
+    });
 
     console.log(`Done.`);
     db.pg.destroy();
-  })
+  });
 
 program.parse(process.argv);

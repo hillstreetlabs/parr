@@ -70,7 +70,7 @@ export default class TransactionDownloader {
     try {
       const receipt = await this.db.web3.getTransactionReceipt(transactionHash);
 
-      const logs = await this.importLogs(receipt.to, receipt.logs);
+      const logs = await this.importLogs(receipt);
 
       const transaction = await upsert(
         this.db.pg,
@@ -97,16 +97,16 @@ export default class TransactionDownloader {
     return unlocked;
   }
 
-  async importLogs(toAddress, logs) {
+  async importLogs(receipt) {
     let decoded;
     const contract = await this.db
       .pg("contracts")
-      .where("address", toAddress)
+      .where("address", receipt.to)
       .first();
     if (contract) {
       try {
         const decoder = Eth.abi.logDecoder(contract.abi);
-        decoded = decoder(logs);
+        decoded = decoder(receipt.logs);
       } catch (error) {
         decoded = [];
       }
@@ -114,24 +114,25 @@ export default class TransactionDownloader {
       decoded = [];
     }
     return Promise.all(
-      logs.map((log, index) => {
-        return this.importLog(log, decoded[index]);
+      receipt.logs.map((log, index) => {
+        return this.importLog(log, decoded[index], receipt.blockHash);
       })
     );
   }
 
-  async importLog(log, decoded) {
+  async importLog(log, decoded, blockHash) {
     const saved = await upsert(
       this.db.pg,
       "logs",
-      this.logJson(log, decoded),
+      this.logJson(log, decoded, blockHash),
       "(transaction_hash, log_index)"
     );
     console.log(`Downloaded log ${log.transactionHash}:${log.logIndex}`);
   }
 
-  logJson(log, decoded = {}) {
+  logJson(log, decoded = {}, blockHash) {
     return {
+      block_hash: blockHash,
       transaction_hash: log.transactionHash,
       log_index: log.logIndex.toNumber(),
       status: "downloaded",
