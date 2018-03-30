@@ -10,13 +10,13 @@ export default class Indexer {
     this.pid = `Indexer@${process.pid}`;
   }
 
-  async run(delay = 1000) {
+  async run() {
     let transactions = await this.getTransactions();
     if (transactions.length > 0) {
       await this.indexTransactions(transactions);
       this.run();
     } else {
-      console.log(`No downloaded transactions found, waiting ${delay}ms`);
+      console.log(`No downloaded transactions found, waiting ${DELAY}ms`);
       this.timer = setTimeout(() => this.run(), DELAY);
     }
   }
