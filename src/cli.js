@@ -7,6 +7,7 @@ import program from "commander";
 import clui from "clui";
 import { observe } from "mobx";
 import initDb from "./db";
+import fs from "fs";
 
 import BlockIndexer from "./lib/BlockIndexer";
 import TransactionIndexer from "./lib/TransactionIndexer";
@@ -14,6 +15,7 @@ import BlockImporter from "./lib/BlockImporter";
 import BlockWatcher from "./lib/BlockWatcher";
 import BlockDownloader from "./lib/BlockDownloader";
 import TransactionDownloader from "./lib/TransactionDownloader";
+import implementsAbi from "./util/implementsAbi";
 
 program
   .command("watch")
@@ -133,32 +135,49 @@ program
   .command("seedContracts")
   .description("Import generic contracts")
   .action(async () => {
-    const fs = require('fs');
-    const util = require('util');
+    const fs = require("fs");
+    const util = require("util");
     const readdir = util.promisify(fs.readdir);
     const readFile = util.promisify(fs.readFile);
     const db = await initDb();
 
     console.log(`Reading contract files…`);
-    let _err, fileNames = await readdir("./contracts/");
-    let fileContents = await Promise
-      .all(fileNames.map((fileName) => {
+    let _err,
+      fileNames = await readdir("./contracts/");
+    let fileContents = await Promise.all(
+      fileNames.map(fileName => {
         let fullFilePath = `./contracts/${fileName}`;
         return readFile(fullFilePath);
-      }));
+      })
+    );
 
     console.log(`Parsing contract JSON…`);
-    let contractAttributes = fileContents.map((fileContent) => {
+    let contractAttributes = fileContents.map(fileContent => {
       let contractJSON = JSON.parse(fileContent);
       return { abi: JSON.stringify(contractJSON.abi) };
     });
 
     console.log(`Inserting contract ABIs…`);
-    await db
-      .pg("contracts")
-      .insert(contractAttributes);
+    await db.pg("contracts").insert(contractAttributes);
 
     db.pg.destroy();
+  });
+
+program
+  .command("implements")
+  .description("Check address for ERC standards")
+  .option("-F, --file <dir>", "path to contract JSON with `abi` attribute")
+  .option("-A, --address <n>", "contract address on the chain")
+  .action(async options => {
+    const db = await initDb();
+    const contractFileContent = fs.readFileSync(options.file);
+    const contractJSON = JSON.parse(contractFileContent);
+    const bytecode = await db.web3.getCode(options.address);
+    const result = implementsAbi(contractJSON.abi, bytecode);
+    const answer = result ? "DOES" : "DOES NOT";
+    console.log(
+      `Address ${options.address} ${answer} implement ${options.file}`
+    );
   });
 
 program.parse(process.argv);
