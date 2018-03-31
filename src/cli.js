@@ -112,7 +112,6 @@ program
   .option("-F, --file <dir>", "path to contract JSON with `abi` attribute")
   .option("-A, --address <n>", "contract address on the chain")
   .action(async options => {
-    const fs = require("fs");
     const db = await initDb();
 
     console.log(`Reading contract file…`);
@@ -135,7 +134,6 @@ program
   .command("seedContracts")
   .description("Import generic contracts")
   .action(async () => {
-    const fs = require("fs");
     const util = require("util");
     const readdir = util.promisify(fs.readdir);
     const readFile = util.promisify(fs.readFile);
