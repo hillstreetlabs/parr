@@ -96,7 +96,7 @@ export default class BlockDownloader {
   async unlockBlock(blockHash) {
     const unlocked = await this.db
       .pg("blocks")
-      .where("hash", hash)
+      .where("hash", blockHash)
       .returning("hash")
       .update({ locked_by: null, locked_at: null });
     return unlocked;
