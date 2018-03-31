@@ -79,7 +79,9 @@ export default ({ config, db }) => {
         total_count: contractCount[0].count,
         generic_count: genericContractCount[0].count
       },
-      elastic_search: elasticSearchIndexStats
+      elasticsearch: {
+        indices: elasticSearchIndexStats
+      }
     });
   });
 
