@@ -1,4 +1,3 @@
-import Elasticsearch from "elasticsearch";
 import { version } from "../../package.json";
 import Eth from "ethjs";
 import { Router } from "express";
@@ -8,10 +7,6 @@ export default ({ config, db }) => {
 
 
   api.use("/", async (req, res) => {
-
-    const elasticsearch = new Elasticsearch.Client({
-      host: process.env.ELASTICSEARCH_URL
-    });
 
     const blockCount = await db
       .pg("blocks")
@@ -61,8 +56,8 @@ export default ({ config, db }) => {
       .whereNull("address")
       .count()
 
-    const elasticSearchIndexStats = await elasticsearch
-      .indices
+    const elasticSearchIndexStats = await db
+      .elasticsearch
       .stats()
 
     res.json({

@@ -17,6 +17,10 @@ export default class ES {
       .catch(err => console.error(`Error connecting to the es client: ${err}`));
   }
 
+  stats() {
+    return this.client.indices.stats();
+  }
+
   resetIndices() {
     INDICES.map(async indexName => {
       const indexExists = await this.client.indices.exists({
