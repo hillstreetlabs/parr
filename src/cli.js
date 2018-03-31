@@ -129,4 +129,36 @@ program
     db.pg.destroy();
   });
 
+program
+  .command("seedContracts")
+  .description("Import generic contracts")
+  .action(async () => {
+    const fs = require('fs');
+    const util = require('util');
+    const readdir = util.promisify(fs.readdir);
+    const readFile = util.promisify(fs.readFile);
+    const db = await initDb();
+
+    console.log(`Reading contract files…`);
+    let _err, fileNames = await readdir("./contracts/");
+    let fileContents = await Promise
+      .all(fileNames.map((fileName) => {
+        let fullFilePath = `./contracts/${fileName}`;
+        return readFile(fullFilePath);
+      }));
+
+    console.log(`Parsing contract JSON…`);
+    let contractAttributes = fileContents.map((fileContent) => {
+      let contractJSON = JSON.parse(fileContent);
+      return { abi: JSON.stringify(contractJSON.abi) };
+    });
+
+    console.log(`Inserting contract ABIs…`);
+    await db
+      .pg("contracts")
+      .insert(contractAttributes);
+
+    db.pg.destroy();
+  });
+
 program.parse(process.argv);
