@@ -2494,7 +2494,7 @@ ethjs-format@0.2.5:
     number-to-bn "1.7.0"
     strip-hex-prefix "1.0.0"
 
-ethjs-provider-http@0.1.6:
+ethjs-provider-http@0.1.6, ethjs-provider-http@^0.1.6:
   version "0.1.6"
   resolved "https://registry.yarnpkg.com/ethjs-provider-http/-/ethjs-provider-http-0.1.6.tgz#1ec5d9b4be257ef1d56a500b22a741985e889420"
   dependencies:
@@ -2507,9 +2507,20 @@ ethjs-query@0.3.3:
     ethjs-format "0.2.5"
     ethjs-rpc "0.1.8"
 
+ethjs-query@^0.3.4:
+  version "0.3.4"
+  resolved "https://registry.yarnpkg.com/ethjs-query/-/ethjs-query-0.3.4.tgz#068a8b268fe045acd2dfdf167bb740b12e596bc3"
+  dependencies:
+    ethjs-format "0.2.5"
+    ethjs-rpc "0.1.9"
+
 ethjs-rpc@0.1.8:
   version "0.1.8"
   resolved "https://registry.yarnpkg.com/ethjs-rpc/-/ethjs-rpc-0.1.8.tgz#1676740e41c7228196a71189d33f15c9c85b599d"
+
+ethjs-rpc@0.1.9:
+  version "0.1.9"
+  resolved "https://registry.yarnpkg.com/ethjs-rpc/-/ethjs-rpc-0.1.9.tgz#389dcd61be52e72bc47111a75805f8e45882faea"
 
 ethjs-schema@0.2.0:
   version "0.2.0"

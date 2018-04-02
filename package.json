@@ -31,6 +31,8 @@
     "etherscan-api": "^8.0.4",
     "ethjs": "^0.3.3",
     "ethjs-abi": "^0.2.1",
+    "ethjs-provider-http": "^0.1.6",
+    "ethjs-query": "^0.3.4",
     "ethmoji-contracts": "^1.0.4",
     "express": "^4.13.3",
     "isomorphic-fetch": "^2.2.1",

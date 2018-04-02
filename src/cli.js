@@ -39,7 +39,6 @@ program
     const importer = new BlockImporter(db);
     try {
       const latest = (await db.web3.blockNumber()).toNumber() - 6;
-      console.log(`Latest block: ${latest}`);
       const promises = [];
       if (options.block) promises.push(importer.importBlock(options.block));
       if (options.last) {
