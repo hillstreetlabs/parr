@@ -12,40 +12,37 @@ export default class BlockImporter {
   }
 
   async importBlocks(fromBlock, toBlock) {
-    let batchStartBlock = fromBlock;
-    let batchEndBlock = Math.min(batchStartBlock + BATCH_SIZE - 1, toBlock);
-    while (batchEndBlock <= toBlock) {
-      let promises = [];
-      for (let num = batchStartBlock; num <= batchEndBlock; num += 1) {
-        promises.push(this.importBlock(num));
-      }
-      try {
-        console.log(promises);
+    try {
+      let batchStartBlock = fromBlock;
+      let batchEndBlock = Math.min(batchStartBlock + BATCH_SIZE - 1, toBlock);
+      while (batchStartBlock <= toBlock) {
+        let promises = [];
+        for (let num = batchStartBlock; num <= batchEndBlock; num += 1) {
+          promises.push(this.importBlock(num));
+        }
         await Promise.all(promises);
         batchStartBlock = batchEndBlock + 1;
         batchEndBlock = Math.min(batchStartBlock + BATCH_SIZE - 1, toBlock);
-      } catch (err) {
-        console.log("CATCH", err);
       }
-    }
-    let failureAttempts = 0;
-    while (
-      this.failedBlockNumbers.length > 0 &&
-      failureAttempts <= MAX_FAILURE_ATTEMPTS
-    ) {
-      try {
+      let failureAttempts = 0;
+      while (
+        this.failedBlockNumbers.length > 0 &&
+        failureAttempts < MAX_FAILURE_ATTEMPTS
+      ) {
+        console.log(
+          `Failure attempt ${failureAttempts + 1} of ${MAX_FAILURE_ATTEMPTS}`
+        );
         let blockNumbers = this.failedBlockNumbers;
         this.failedBlockNumbers = [];
         await Promise.all(blockNumbers.map(num => this.importBlock(num)));
         failureAttempts += 1;
-      } catch (err) {
-        console.log("CATCH CATCH", err);
       }
+    } catch (err) {
+      console.log("importBlocks error", err);
     }
   }
 
   async importBlock(blockNumber) {
-    console.log("importBlock", blockNumber);
     try {
       const block = await withTimeout(
         this.db.web3.getBlockByNumber(blockNumber, false),
