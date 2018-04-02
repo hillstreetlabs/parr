@@ -33,7 +33,6 @@
     "ethjs-abi": "^0.2.1",
     "ethjs-provider-http": "^0.1.6",
     "ethjs-query": "^0.3.4",
-    "ethmoji-contracts": "^1.0.4",
     "express": "^4.13.3",
     "isomorphic-fetch": "^2.2.1",
     "knex": "^0.14.4",

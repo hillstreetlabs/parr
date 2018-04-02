@@ -77,8 +77,6 @@ export default class BlockIndexer {
         "block",
         blockJson(await this.fetchBlockData(block))
       );
-
-      throw "ASd";
       await this.db
         .pg("blocks")
         .where({ hash: block.hash })

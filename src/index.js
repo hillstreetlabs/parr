@@ -9,7 +9,6 @@ import morgan from "morgan";
 import bodyParser from "body-parser";
 import initDb from "./db";
 import api from "./api";
-import ethmoji from "./api/ethmoji";
 import stats from "./api/stats";
 import config from "./config.json";
 
@@ -38,8 +37,6 @@ async function start() {
 
   // api router
   app.use("/", api({ config, db }));
-
-  app.use("/ethmoji", ethmoji({ config, db }));
 
   app.use("/stats", stats({ config, db }));
 

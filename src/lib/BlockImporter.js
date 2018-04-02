@@ -3,7 +3,6 @@ import withTimeout from "../util/withTimeout";
 
 const BATCH_SIZE = 30;
 const MAX_FAILURE_ATTEMPTS = 10;
-const FAILURE_ATTEMPT_DELAY = 5000;
 
 export default class BlockImporter {
   constructor(db) {
