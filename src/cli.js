@@ -37,24 +37,31 @@ program
   .action(async options => {
     const db = await initDb();
     const importer = new BlockImporter(db);
-    const latest = (await db.web3.blockNumber()).toNumber();
-    const promises = [];
-    if (options.block) promises.push(importer.importBlock(options.block));
-    if (options.last) {
-      promises.push(importer.importBlocks(latest - (options.last - 1), latest));
+    try {
+      const latest = (await db.web3.blockNumber()).toNumber() - 6;
+      const promises = [];
+      if (options.block) promises.push(importer.importBlock(options.block));
+      if (options.last) {
+        promises.push(
+          importer.importBlocks(latest - (options.last - 1), latest)
+        );
+      }
+      if (options.from || options.to) {
+        const fromBlock = options.from || 1;
+        const toBlock = options.to || latest;
+        if (toBlock < fromBlock)
+          throw "toBlock must be greater than or equal to fromBlock";
+        promises.push(importer.importBlocks(fromBlock, toBlock));
+      }
+      if (options.all) {
+        promises.push(importer.importBlocks(1, latest));
+      }
+      await Promise.all(promises);
+      db.pg.destroy();
+    } catch (err) {
+      console.log("Error", err);
+      db.pg.destroy();
     }
-    if (options.from || options.to) {
-      const fromBlock = options.from || 1;
-      const toBlock = options.to || latest;
-      if (toBlock < fromBlock)
-        throw "toBlock must be greater than or equal to fromBlock";
-      promises.push(importer.importBlocks(fromBlock, toBlock));
-    }
-    if (options.all) {
-      promises.push(importer.importBlocks(1, latest));
-    }
-    await Promise.all(promises);
-    db.pg.destroy();
   });
 
 program
