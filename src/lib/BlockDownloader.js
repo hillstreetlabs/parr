@@ -69,7 +69,7 @@ export default class BlockDownloader {
     try {
       const block = await withTimeout(
         this.db.web3.getBlockByHash(blockHash, true),
-        2000
+        5000
       );
       const savedBlock = await upsert(
         this.db.pg,

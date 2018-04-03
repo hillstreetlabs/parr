@@ -44,7 +44,7 @@ export default class BlockImporter {
     try {
       const block = await withTimeout(
         this.db.web3.getBlockByNumber(blockNumber, true),
-        2000
+        5000
       );
       const blockJson = {
         number: block.number.toNumber(),
@@ -58,7 +58,7 @@ export default class BlockImporter {
       return saved;
     } catch (err) {
       this.failedBlockNumbers.push(blockNumber);
-      console.log(`Failed to import block ${blockNumber}`);
+      console.log(`Failed to import block ${blockNumber}`, err);
       return true;
     }
   }

@@ -1,5 +1,6 @@
 import Eth from "ethjs";
 import upsert from "../util/upsert";
+import withTimeout from "../util/withTimeout";
 
 const BATCH_SIZE = 50;
 const DELAY = 5000;
@@ -68,21 +69,22 @@ export default class TransactionDownloader {
 
   async importTransaction(transactionHash) {
     try {
-      const receipt = await this.db.web3.getTransactionReceipt(transactionHash);
-
+      const receipt = await withTimeout(
+        this.db.web3.getTransactionReceipt(transactionHash),
+        5000
+      );
       const logs = await this.importLogs(receipt);
-
       const transaction = await upsert(
         this.db.pg,
         "transactions",
         this.transactionJson(receipt),
         "(hash)"
       );
-
       console.log(`Downloaded transaction ${transaction.hash}`);
     } catch (err) {
       console.log(
-        `Failed to getTransactionReceipt for ${transactionHash}, un-locking...`
+        `Failed to import transaction ${transactionHash}, un-locking...`,
+        err
       );
       return this.unlockTransaction(transactionHash);
     }

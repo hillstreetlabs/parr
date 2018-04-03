@@ -5,60 +5,48 @@ import { Router } from "express";
 export default ({ config, db }) => {
   let api = Router();
 
-
   api.use("/", async (req, res) => {
-
-    const blockCount = await db
-      .pg("blocks")
-      .count()
+    const blockCount = await db.pg("blocks").count();
 
     const blockCountByStatus = await db
       .pg("blocks")
       .select("status")
       .groupBy("status")
-      .count()
+      .count();
 
     const mostRecentBlock = await db
       .pg("blocks")
-      .orderBy("number")
-      .first()
+      .orderBy("number", "desc")
+      .first();
 
-    const transactionCount = await db
-      .pg("transactions")
-      .count()
+    const transactionCount = await db.pg("transactions").count();
 
     const transactionCountByStatus = await db
       .pg("transactions")
       .select("status")
       .groupBy("status")
-      .count()
+      .count();
 
-    const logCount = await db
-      .pg("logs")
-      .count()
+    const logCount = await db.pg("logs").count();
 
     const logCountByStatus = await db
       .pg("logs")
       .select("status")
       .groupBy("status")
-      .count()
+      .count();
     const logDecodedCount = await db
       .pg("logs")
       .whereRaw("decoded::text <> '{}'::text")
-      .count()
+      .count();
 
-    const contractCount = await db
-      .pg("contracts")
-      .count()
+    const contractCount = await db.pg("contracts").count();
 
     const genericContractCount = await db
       .pg("contracts")
       .whereNull("address")
-      .count()
+      .count();
 
-    const elasticSearchIndexStats = await db
-      .elasticsearch
-      .stats()
+    const elasticSearchIndexStats = await db.elasticsearch.stats();
 
     res.json({
       blocks: {

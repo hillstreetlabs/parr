@@ -1,6 +1,9 @@
 export default (promise, timeout) => {
   return new Promise((resolve, reject) => {
-    let timer = setTimeout(() => reject(), timeout);
+    let timer = setTimeout(
+      () => reject(`Timeout of ${timeout}ms exceeded`),
+      timeout
+    );
     promise
       .then((...args) => {
         if (timer) {
