@@ -58,7 +58,7 @@ export default class BlockImporter {
       return saved;
     } catch (err) {
       this.failedBlockNumbers.push(blockNumber);
-      console.log(`Failed to import block ${blockNumber}`, err);
+      console.log(`Failed to import block ${blockNumber}`);
       return true;
     }
   }
