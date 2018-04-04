@@ -117,6 +117,8 @@ export default class BlockDownloader {
       block_hash: transaction.blockHash,
       status: "imported",
       block_hash: transaction.blockHash,
+      from_address: transaction.from,
+      to_address: transaction.to,
       data: {
         blockHash: transaction.blockHash,
         blockNumber: transaction.blockNumber.toNumber(),

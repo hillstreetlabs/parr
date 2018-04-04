@@ -39,11 +39,21 @@ export default ({ config, db }) => {
       .whereRaw("decoded::text <> '{}'::text")
       .count();
 
-    const contractCount = await db.pg("contracts").count();
+    const addressCount = await db.pg("addresses").count();
 
-    const genericContractCount = await db
-      .pg("contracts")
-      .whereNull("address")
+    const contractCount = await db
+      .pg("addresses")
+      .where("is_contract", true)
+      .count();
+
+    const erc20Count = await db
+      .pg("addresses")
+      .where("is_erc20", true)
+      .count();
+
+    const erc721Count = await db
+      .pg("addresses")
+      .where("is_erc721", true)
       .count();
 
     const elasticSearchIndexStats = await db.elasticsearch.stats();
@@ -63,9 +73,11 @@ export default ({ config, db }) => {
         decoded_count: logDecodedCount[0].count,
         count_by_status: logCountByStatus
       },
-      contracts: {
-        total_count: contractCount[0].count,
-        generic_count: genericContractCount[0].count
+      addresses: {
+        total_count: addressCount[0].count,
+        contract_count: contractCount[0].count,
+        erc20_count: erc20Count[0].count,
+        erc721_count: erc721Count[0].count
       },
       elasticsearch: {
         indices: elasticSearchIndexStats
