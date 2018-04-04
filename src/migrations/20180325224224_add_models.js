@@ -67,14 +67,13 @@ exports.up = async (knex, Promise) => {
     table.increments();
     table.string("address");
     table.index("address");
+    table.unique("address");
     table.string("status");
     table.index("status");
     table.boolean("is_contract");
     table.boolean("is_erc20");
     table.boolean("is_erc721");
     table.jsonb("abi");
-    table.string("locked_by");
-    table.timestamp("locked_at");
     table.timestamps(true, true);
   });
 };

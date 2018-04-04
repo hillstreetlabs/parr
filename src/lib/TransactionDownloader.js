@@ -82,11 +82,11 @@ export default class TransactionDownloader {
         this.transactionJson(receipt),
         "(hash)"
       );
-      const logs = await this.importLogs(receipt);
       await Promise.all([
         this.importAddress(receipt.to),
         this.importAddress(receipt.from)
       ]);
+      const logs = await this.importLogs(receipt);
       console.log(`Downloaded transaction ${transaction.hash}`);
     } catch (err) {
       console.log(
