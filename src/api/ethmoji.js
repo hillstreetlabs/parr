@@ -19,6 +19,7 @@ export default ({ config, db }) => {
       req.params.address,
       0
     );
+
     const payments = response.result
       .map(tx => {
         if (tx.from == ethmoji.address) return new BN(tx.value);
@@ -28,7 +29,8 @@ export default ({ config, db }) => {
     res.json({
       address: req.params.address,
       balance: Eth.fromWei(balance, "ether"),
-      count: payments.length
+      count: payments.length,
+      response: response
     });
   });
 
