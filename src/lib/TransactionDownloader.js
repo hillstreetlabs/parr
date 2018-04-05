@@ -2,6 +2,7 @@ import Eth from "ethjs";
 import upsert from "../util/upsert";
 import withTimeout from "../util/withTimeout";
 import implementsAbi from "../util/implementsAbi";
+import decodeTimeField from "../util/decodeTimeField";
 import ERC20 from "../../contracts/ERC20.json";
 import ERC721 from "../../contracts/ERC721.json";
 
@@ -133,24 +134,14 @@ export default class TransactionDownloader {
   }
 
   async importInternalTransactions(receipt) {
-    let decoded;
-    const contract = await this.db
-      .pg("addresses")
-      .where("address", receipt.to)
-      .first();
-    if (contract && contract.abi) {
-      try {
-        const decoder = Eth.abi.logDecoder(contract.abi);
-        decoded = decoder(receipt.logs);
-      } catch (error) {
-        decoded = [];
-      }
-    } else {
-      decoded = [];
-    }
+    const response = await withTimeout(
+      this.db.etherscan.account.txlistinternal(receipt.transactionHash),
+      5000
+    );
+
     return Promise.all(
-      receipt.logs.map((log, index) => {
-        return this.importLog(log, decoded[index], receipt.blockHash);
+      response.result.map(internalTransaction => {
+        return this.importInternalTransaction(internalTransaction, receipt);
       })
     );
   }
@@ -163,6 +154,21 @@ export default class TransactionDownloader {
       "(transaction_hash, log_index)"
     );
     console.log(`Downloaded log ${log.transactionHash}:${log.logIndex}`);
+  }
+
+  async importInternalTransaction(transaction, receipt) {
+    try {
+      savedTransactions = await this.db
+        .pg("internal_transactions")
+        .insert(this.internalTransactionJson(transaction, receipt));
+      console.log(
+        `Downloaded internal transaction ${receipt.transactionHash}:${
+          receipt.blockHash
+        }`
+      );
+    } catch (err) {
+      // Silence duplicate errors
+    }
   }
 
   async importAddress(address) {
@@ -180,6 +186,32 @@ export default class TransactionDownloader {
     } catch (err) {
       return true; // Silence error
     }
+  }
+
+  internalTransactionJson(transaction, receipt) {
+    return {
+      block_number: transaction.blockNumber.toNumber(),
+      block_hash: receipt.blockHash,
+      transaction_hash: receipt.transactionHash,
+      from_address: transaction.from,
+      to_address: transaction.to,
+      status: "downloaded",
+      locked_by: null,
+      locked_at: null,
+      downloaded_by: this.pid,
+      downloaded_at: this.db.pg.fn.now(),
+      data: {
+        timeStamp: decodeTimeField(transaction.timeStamp),
+        value: Eth.fromWei(transaction.value, "ether"),
+        contractAddress: transaction.contractAddress,
+        input: transaction.input,
+        type: transaction.type,
+        gas: transaction.gas.toString(10),
+        gasUsed: transaction.gasUsed.toString(10),
+        isError: transaction.isError === "0" ? false : true,
+        errCode: transaction.errCode
+      }
+    };
   }
 
   addressJson(address, bytecode) {

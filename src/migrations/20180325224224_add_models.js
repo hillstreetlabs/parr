@@ -62,6 +62,8 @@ exports.up = async (knex, Promise) => {
     table.jsonb("data");
     table.integer("block_number");
     table.index("block_number");
+    table.integer("block_hash");
+    table.index("block_hash");
     table.string("from_address");
     table.string("to_address");
     table.timestamps(true, true);
