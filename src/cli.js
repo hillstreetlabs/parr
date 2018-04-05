@@ -11,6 +11,7 @@ import fs from "fs";
 
 import BlockIndexer from "./lib/BlockIndexer";
 import TransactionIndexer from "./lib/TransactionIndexer";
+import AddressIndexer from "./lib/AddressIndexer";
 import BlockImporter from "./lib/BlockImporter";
 import BlockWatcher from "./lib/BlockWatcher";
 import BlockDownloader from "./lib/BlockDownloader";
@@ -37,24 +38,31 @@ program
   .action(async options => {
     const db = await initDb();
     const importer = new BlockImporter(db);
-    const latest = (await db.web3.blockNumber()).toNumber();
-    const promises = [];
-    if (options.block) promises.push(importer.importBlock(options.block));
-    if (options.last) {
-      promises.push(importer.importBlocks(latest - (options.last - 1), latest));
+    try {
+      const latest = (await db.web3.blockNumber()).toNumber() - 6;
+      const promises = [];
+      if (options.block) promises.push(importer.importBlock(options.block));
+      if (options.last) {
+        promises.push(
+          importer.importBlocks(latest - (options.last - 1), latest)
+        );
+      }
+      if (options.from || options.to) {
+        const fromBlock = options.from || 1;
+        const toBlock = options.to || latest;
+        if (toBlock < fromBlock)
+          throw "toBlock must be greater than or equal to fromBlock";
+        promises.push(importer.importBlocks(fromBlock, toBlock));
+      }
+      if (options.all) {
+        promises.push(importer.importBlocks(1, latest));
+      }
+      await Promise.all(promises);
+      db.pg.destroy();
+    } catch (err) {
+      console.log("Encountered error, shutting down");
+      db.pg.destroy();
     }
-    if (options.from || options.to) {
-      const fromBlock = options.from || 1;
-      const toBlock = options.to || latest;
-      if (toBlock < fromBlock)
-        throw "toBlock must be greater than or equal to fromBlock";
-      promises.push(importer.importBlocks(fromBlock, toBlock));
-    }
-    if (options.all) {
-      promises.push(importer.importBlocks(1, latest));
-    }
-    await Promise.all(promises);
-    db.pg.destroy();
   });
 
 program
@@ -93,6 +101,16 @@ program
   .action(async options => {
     const db = await initDb();
     const indexer = new BlockIndexer(db);
+    indexer.run();
+    process.on("SIGINT", () => indexer.exit());
+  });
+
+program
+  .command("indexAddresses")
+  .description("index address(es) from Parr PG instance to Parr ES instance")
+  .action(async options => {
+    const db = await initDb();
+    const indexer = new AddressIndexer(db);
     indexer.run();
     process.on("SIGINT", () => indexer.exit());
   });

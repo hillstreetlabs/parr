@@ -1,5 +1,9 @@
 import Eth from "ethjs";
 import upsert from "../util/upsert";
+import withTimeout from "../util/withTimeout";
+import implementsAbi from "../util/implementsAbi";
+import ERC20 from "../../contracts/ERC20.json";
+import ERC721 from "../../contracts/ERC721.json";
 
 const BATCH_SIZE = 50;
 const DELAY = 5000;
@@ -68,21 +72,26 @@ export default class TransactionDownloader {
 
   async importTransaction(transactionHash) {
     try {
-      const receipt = await this.db.web3.getTransactionReceipt(transactionHash);
-
-      const logs = await this.importLogs(receipt);
-
+      const receipt = await withTimeout(
+        this.db.web3.getTransactionReceipt(transactionHash),
+        5000
+      );
       const transaction = await upsert(
         this.db.pg,
         "transactions",
         this.transactionJson(receipt),
         "(hash)"
       );
-
+      await Promise.all([
+        this.importAddress(receipt.to),
+        this.importAddress(receipt.from)
+      ]);
+      const logs = await this.importLogs(receipt);
       console.log(`Downloaded transaction ${transaction.hash}`);
     } catch (err) {
       console.log(
-        `Failed to getTransactionReceipt for ${transactionHash}, un-locking...`
+        `Failed to import transaction ${transactionHash}, un-locking...`,
+        err
       );
       return this.unlockTransaction(transactionHash);
     }
@@ -100,10 +109,10 @@ export default class TransactionDownloader {
   async importLogs(receipt) {
     let decoded;
     const contract = await this.db
-      .pg("contracts")
+      .pg("addresses")
       .where("address", receipt.to)
       .first();
-    if (contract) {
+    if (contract && contract.abi) {
       try {
         const decoder = Eth.abi.logDecoder(contract.abi);
         decoded = decoder(receipt.logs);
@@ -128,6 +137,33 @@ export default class TransactionDownloader {
       "(transaction_hash, log_index)"
     );
     console.log(`Downloaded log ${log.transactionHash}:${log.logIndex}`);
+  }
+
+  async importAddress(address) {
+    try {
+      const bytecode = await this.db.web3.getCode(address);
+      const saved = await this.db
+        .pg("addresses")
+        .insert(this.addressJson(address, bytecode));
+      console.log(
+        `Downloaded address ${address}${
+          bytecode != "0x" ? " (✓ Contract)" : ""
+        }`
+      );
+      return saved;
+    } catch (err) {
+      return true; // Silence error
+    }
+  }
+
+  addressJson(address, bytecode) {
+    return {
+      address: address,
+      status: "downloaded",
+      is_contract: bytecode != "0x",
+      is_erc20: implementsAbi(ERC20.abi, bytecode),
+      is_erc721: implementsAbi(ERC721.abi, bytecode)
+    };
   }
 
   logJson(log, decoded = {}, blockHash) {

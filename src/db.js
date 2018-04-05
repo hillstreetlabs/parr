@@ -1,4 +1,5 @@
-import Eth from "ethjs";
+import HttpProvider from "ethjs-provider-http";
+import Eth from "ethjs-query";
 import ES from "./lib/ES";
 import Etherscan from "etherscan-api";
 import Knex from "knex";
@@ -7,7 +8,7 @@ import knexConfig from "../knexfile";
 // Returns an object with references to various databases
 export default async () => {
   const web3 = new Eth(
-    new Eth.HttpProvider(
+    new HttpProvider(
       `https://${process.env.INFURA_NETWORK}.infura.io/${
         process.env.INFURA_KEY
       }`

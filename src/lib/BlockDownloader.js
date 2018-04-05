@@ -1,6 +1,7 @@
 import Eth from "ethjs";
 import { action, computed, observable } from "mobx";
 import upsert from "../util/upsert";
+import withTimeout from "../util/withTimeout";
 
 const BATCH_SIZE = 20;
 const DELAY = 5000;
@@ -65,32 +66,36 @@ export default class BlockDownloader {
   }
 
   async importBlock(blockHash) {
-    const block = await this.db.web3.getBlockByHash(blockHash, true);
-    if (!block) {
-      console.log(`Failed to getBlockByHash for ${blockHash}, un-locking...`);
+    try {
+      const block = await withTimeout(
+        this.db.web3.getBlockByHash(blockHash, true),
+        5000
+      );
+      const savedBlock = await upsert(
+        this.db.pg,
+        "blocks",
+        this.blockJson(block),
+        "(hash)"
+      );
+      const transactionsJson = block.transactions.map(tx =>
+        this.transactionJson(tx)
+      );
+      let savedTransactions;
+      try {
+        savedTransactions = await this.db
+          .pg("transactions")
+          .insert(transactionsJson);
+      } catch (err) {
+        // Silence duplicate errors
+      }
+      console.log(
+        `Downloaded block: ${block.number.toString()}\tHash: ${blockHash}`
+      );
+      return true;
+    } catch (err) {
+      console.log(`Failed to import block ${blockHash}, un-locking...`);
       return this.unlockBlock(blockHash);
     }
-    const savedBlock = await upsert(
-      this.db.pg,
-      "blocks",
-      this.blockJson(block),
-      "(hash)"
-    );
-    const transactionsJson = block.transactions.map(tx =>
-      this.transactionJson(tx)
-    );
-    let savedTransactions;
-    try {
-      savedTransactions = await this.db
-        .pg("transactions")
-        .insert(transactionsJson);
-    } catch (err) {
-      // Silence duplicate errors
-    }
-    console.log(
-      `Downloaded block: ${block.number.toString()}\tHash: ${blockHash}`
-    );
-    return true;
   }
 
   async unlockBlock(blockHash) {
@@ -112,6 +117,8 @@ export default class BlockDownloader {
       block_hash: transaction.blockHash,
       status: "imported",
       block_hash: transaction.blockHash,
+      from_address: transaction.from,
+      to_address: transaction.to,
       data: {
         blockHash: transaction.blockHash,
         blockNumber: transaction.blockNumber.toNumber(),
