@@ -11,6 +11,7 @@ import fs from "fs";
 
 import BlockIndexer from "./lib/BlockIndexer";
 import TransactionIndexer from "./lib/TransactionIndexer";
+import AddressIndexer from "./lib/AddressIndexer";
 import BlockImporter from "./lib/BlockImporter";
 import BlockWatcher from "./lib/BlockWatcher";
 import BlockDownloader from "./lib/BlockDownloader";
@@ -100,6 +101,16 @@ program
   .action(async options => {
     const db = await initDb();
     const indexer = new BlockIndexer(db);
+    indexer.run();
+    process.on("SIGINT", () => indexer.exit());
+  });
+
+program
+  .command("indexAddresses")
+  .description("index address(es) from Parr PG instance to Parr ES instance")
+  .action(async options => {
+    const db = await initDb();
+    const indexer = new AddressIndexer(db);
     indexer.run();
     process.on("SIGINT", () => indexer.exit());
   });
