@@ -29,11 +29,10 @@ export default class InternalTransactionDownloader {
     const unlocked = await this.db.pg
       .select()
       .from("transactions")
-      .where({ locked_by: this.pid })
+      .where({ internal_transaction_status: "downloading" })
       .returning("hash")
       .update({
-        locked_by: null,
-        locked_at: null
+        internal_transaction_status: "ready"
       });
     console.log(`Unlocked ${unlocked.length} transactions`);
     process.exit();
@@ -71,7 +70,7 @@ export default class InternalTransactionDownloader {
     try {
       response = await withTimeout(
         this.db.etherscan.account.txlistinternal(transaction.hash),
-        7000
+        5000
       );
     } catch (error) {
       if (error === "No transactions found")
@@ -83,7 +82,7 @@ export default class InternalTransactionDownloader {
       response.result.map((internalTransaction, index) => {
         return this.importInternalTransaction(
           internalTransaction,
-          receipt,
+          transaction,
           index
         );
       })
@@ -92,16 +91,16 @@ export default class InternalTransactionDownloader {
     return await this.updateTransactionStatusTo(transaction.hash, "downloaded");
   }
 
-  async importInternalTransaction(internalTransaction, receipt, index) {
+  async importInternalTransaction(internalTransaction, transaction, index) {
     try {
       const saved = await upsert(
         this.db.pg,
         "internal_transactions",
-        this.internalTransactionJson(internalTransaction, receipt, index),
+        this.internalTransactionJson(internalTransaction, transaction, index),
         "(transaction_hash, internal_transaction_index)"
       );
       console.log(
-        `Downloaded internal transaction ${receipt.transactionHash}:${index}`
+        `Downloaded internal transaction ${transaction.hash}:${index}`
       );
     } catch (err) {
       // Silence duplicate errors
@@ -115,29 +114,29 @@ export default class InternalTransactionDownloader {
       .update({ internal_transaction_status: status });
   }
 
-  internalTransactionJson(transaction, receipt, index) {
+  internalTransactionJson(internalTransaction, transaction, index) {
     return {
       internal_transaction_index: index,
-      block_hash: receipt.blockHash,
-      transaction_hash: receipt.transactionHash,
-      from_address: transaction.from,
-      to_address: transaction.to,
+      block_hash: transaction.block_hash,
+      transaction_hash: transaction.hash,
+      from_address: internalTransaction.from,
+      to_address: internalTransaction.to,
       status: "downloaded",
       locked_by: null,
       locked_at: null,
       downloaded_by: this.pid,
       downloaded_at: this.db.pg.fn.now(),
       data: {
-        blockNumber: transaction.blockNumber.toString(10),
-        timestamp: transaction.timeStamp,
-        value: Eth.fromWei(transaction.value, "ether"),
-        contractAddress: transaction.contractAddress,
-        input: transaction.input,
-        type: transaction.type,
-        gas: transaction.gas.toString(10),
-        gasUsed: transaction.gasUsed.toString(10),
-        isError: transaction.isError === "0" ? false : true,
-        errCode: transaction.errCode
+        blockNumber: internalTransaction.blockNumber.toString(10),
+        timestamp: internalTransaction.timeStamp,
+        value: Eth.fromWei(internalTransaction.value, "ether"),
+        contractAddress: internalTransaction.contractAddress,
+        input: internalTransaction.input,
+        type: internalTransaction.type,
+        gas: internalTransaction.gas.toString(10),
+        gasUsed: internalTransaction.gasUsed.toString(10),
+        isError: internalTransaction.isError === "0" ? false : true,
+        errCode: internalTransaction.errCode
       }
     };
   }

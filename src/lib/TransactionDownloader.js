@@ -88,9 +88,6 @@ export default class TransactionDownloader {
         this.importAddress(receipt.from)
       ]);
       const logs = await this.importLogs(receipt);
-      const internalTransactions = await this.importInternalTransactions(
-        receipt
-      );
       console.log(`Downloaded transaction ${transaction.hash}`);
     } catch (err) {
       console.log(
@@ -134,29 +131,6 @@ export default class TransactionDownloader {
     );
   }
 
-  async importInternalTransactions(receipt) {
-    let response;
-    try {
-      response = await withTimeout(
-        this.db.etherscan.account.txlistinternal(receipt.transactionHash),
-        7000
-      );
-    } catch (error) {
-      if (error === "No transactions found") return true;
-      throw error;
-    }
-
-    return Promise.all(
-      response.result.map((internalTransaction, index) => {
-        return this.importInternalTransaction(
-          internalTransaction,
-          receipt,
-          index
-        );
-      })
-    );
-  }
-
   async importLog(log, decoded, blockHash) {
     const saved = await upsert(
       this.db.pg,
@@ -165,22 +139,6 @@ export default class TransactionDownloader {
       "(transaction_hash, log_index)"
     );
     console.log(`Downloaded log ${log.transactionHash}:${log.logIndex}`);
-  }
-
-  async importInternalTransaction(internalTransaction, receipt, index) {
-    try {
-      const saved = await upsert(
-        this.db.pg,
-        "internal_transactions",
-        this.internalTransactionJson(internalTransaction, receipt, index),
-        "(transaction_hash, internal_transaction_index)"
-      );
-      console.log(
-        `Downloaded internal transaction ${receipt.transactionHash}:${index}`
-      );
-    } catch (err) {
-      // Silence duplicate errors
-    }
   }
 
   async importAddress(address) {
@@ -198,33 +156,6 @@ export default class TransactionDownloader {
     } catch (err) {
       return true; // Silence error
     }
-  }
-
-  internalTransactionJson(transaction, receipt, index) {
-    return {
-      internal_transaction_index: index,
-      block_hash: receipt.blockHash,
-      transaction_hash: receipt.transactionHash,
-      from_address: transaction.from,
-      to_address: transaction.to,
-      status: "downloaded",
-      locked_by: null,
-      locked_at: null,
-      downloaded_by: this.pid,
-      downloaded_at: this.db.pg.fn.now(),
-      data: {
-        blockNumber: transaction.blockNumber.toString(10),
-        timestamp: transaction.timeStamp,
-        value: Eth.fromWei(transaction.value, "ether"),
-        contractAddress: transaction.contractAddress,
-        input: transaction.input,
-        type: transaction.type,
-        gas: transaction.gas.toString(10),
-        gasUsed: transaction.gasUsed.toString(10),
-        isError: transaction.isError === "0" ? false : true,
-        errCode: transaction.errCode
-      }
-    };
   }
 
   addressJson(address, bytecode) {
