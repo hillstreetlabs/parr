@@ -30,7 +30,7 @@ export default class InternalTransactionIndexer {
       .select()
       .from("internal_transactions")
       .where({ locked_by: this.pid })
-      .returning("hash")
+      .returning("id")
       .update({
         locked_by: null,
         locked_at: null
@@ -71,27 +71,26 @@ export default class InternalTransactionIndexer {
       .pg("transactions")
       .where({ hash: internalTransaction.transaction_hash })
       .first();
-    internalTransaction.fromAddress = this.db
+    internalTransaction.fromAddress = await this.db
       .pg("addresses")
       .where({ address: internalTransaction.from_address })
       .first();
-    internalTransaction.toAddress = this.db
+    internalTransaction.toAddress = await this.db
       .pg("addresses")
       .where({ address: internalTransaction.to_address })
       .first();
-    internalTransaction.block = this.db
+    internalTransaction.block = await this.db
       .pg("blocks")
       .where({ hash: internalTransaction.block_hash })
       .first();
-
     return internalTransaction;
   }
 
   async indexInternalTransaction(internalTransaction) {
     try {
       await this.db.elasticsearch.bulkIndex(
-        "internalTransactions",
-        "internalTransaction",
+        "internal_transactions",
+        "internal_transaction",
         internalTransactionJson(await this.fetchData(internalTransaction))
       );
 

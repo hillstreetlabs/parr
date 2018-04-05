@@ -5,7 +5,7 @@ const INDICES = [
   "transactions",
   "logs",
   "addresses",
-  "internalTransactions"
+  "internal_transactions"
 ];
 
 export default class ES {

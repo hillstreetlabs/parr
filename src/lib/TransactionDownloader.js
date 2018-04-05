@@ -134,10 +134,15 @@ export default class TransactionDownloader {
   }
 
   async importInternalTransactions(receipt) {
-    const response = await withTimeout(
-      this.db.etherscan.account.txlistinternal(receipt.transactionHash),
-      5000
-    );
+    let response;
+    try {
+      response = await withTimeout(
+        this.db.etherscan.account.txlistinternal(receipt.transactionHash),
+        5000
+      );
+    } catch (error) {
+      return true;
+    }
 
     return Promise.all(
       response.result.map(internalTransaction => {
@@ -158,7 +163,7 @@ export default class TransactionDownloader {
 
   async importInternalTransaction(internalTransaction, receipt) {
     try {
-      savedInternalTransaction = await this.db
+      const savedInternalTransaction = await this.db
         .pg("internal_transactions")
         .insert(this.internalTransactionJson(internalTransaction, receipt));
       console.log(
@@ -190,7 +195,6 @@ export default class TransactionDownloader {
 
   internalTransactionJson(transaction, receipt) {
     return {
-      block_number: transaction.blockNumber.toNumber(),
       block_hash: receipt.blockHash,
       transaction_hash: receipt.transactionHash,
       from_address: transaction.from,
@@ -201,7 +205,8 @@ export default class TransactionDownloader {
       downloaded_by: this.pid,
       downloaded_at: this.db.pg.fn.now(),
       data: {
-        timeStamp: decodeTimeField(transaction.timeStamp),
+        blockNumber: transaction.blockNumber.toString(10),
+        timestamp: transaction.timeStamp,
         value: Eth.fromWei(transaction.value, "ether"),
         contractAddress: transaction.contractAddress,
         input: transaction.input,

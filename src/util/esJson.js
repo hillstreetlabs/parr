@@ -85,14 +85,16 @@ export const internalTransactionJson = internalTransaction => {
     transaction: internalTransaction.transaction
       ? transactionJson(internalTransaction.transaction)
       : {},
-    timeStamp: internalTransaction.data.timeStamp,
+    timestamp: internalTransaction.data.timestamp,
     value: internalTransaction.data.value,
     contractAddress: internalTransaction.data.contractAddress,
     input: internalTransaction.data.input,
+    id: internalTransaction.id,
     type: internalTransaction.data.type,
     gas: internalTransaction.data.gas,
     gasUsed: internalTransaction.data.gasUsed,
     isError: internalTransaction.data.isError,
-    errCode: internalTransaction.data.errCode
+    errCode: internalTransaction.data.errCode,
+    blockNumber: internalTransaction.data.blockNumber
   };
 };

@@ -16,7 +16,9 @@ import BlockImporter from "./lib/BlockImporter";
 import BlockWatcher from "./lib/BlockWatcher";
 import BlockDownloader from "./lib/BlockDownloader";
 import TransactionDownloader from "./lib/TransactionDownloader";
+import InternalTransactionIndexer from "./lib/InternalTransactionIndexer";
 import implementsAbi from "./util/implementsAbi";
+import decodeTimeField from "./util/decodeTimeField";
 
 program
   .command("watch")
@@ -116,6 +118,18 @@ program
   });
 
 program
+  .command("indexInternalTransactions")
+  .description(
+    "index internal transaction(s) from Parr PG instance to Parr ES instance"
+  )
+  .action(async options => {
+    const db = await initDb();
+    const indexer = new InternalTransactionIndexer(db);
+    indexer.run();
+    process.on("SIGINT", () => indexer.exit());
+  });
+
+program
   .command("reset")
   .description("reset Elasticsearch")
   .action(async options => {
@@ -195,17 +209,5 @@ program
       `Address ${options.address} ${answer} implement ${options.file}`
     );
   });
-
-program.command("test").action(async options => {
-  const db = await initDb();
-
-  const response = await db.etherscan.account.txlistinternal(
-    "0x990554512a9372310ddbbae2347d29d41f929ee6604177fdc4bc2be7393b5f74"
-  );
-
-  console.log(response);
-
-  console.log(response.status, response.message);
-});
 
 program.parse(process.argv);

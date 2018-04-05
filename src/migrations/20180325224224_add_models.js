@@ -60,8 +60,6 @@ exports.up = async (knex, Promise) => {
     table.increments();
     table.string("status");
     table.jsonb("data");
-    table.integer("block_number");
-    table.index("block_number");
     table.string("block_hash");
     table.index("block_hash");
     table.string("transaction_hash");
