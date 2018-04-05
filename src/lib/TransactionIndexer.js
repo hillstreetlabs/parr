@@ -74,6 +74,13 @@ export default class TransactionIndexer {
             Object.assign(log, { block: transaction.block })
           )
         ),
+        this.db.elasticsearch.bulkIndex(
+          "transactions",
+          "transaction",
+          transactionJson(transaction)
+        )
+      ]);
+      await Promise.all([
         this.db
           .pg("logs")
           .where({ transaction_hash: transaction.hash })
@@ -82,11 +89,6 @@ export default class TransactionIndexer {
             indexed_by: this.pid,
             indexed_at: this.db.pg.fn.now()
           }),
-        this.db.elasticsearch.bulkIndex(
-          "transactions",
-          "transaction",
-          transactionJson(transaction)
-        ),
         this.db
           .pg("transactions")
           .where({ hash: transaction.hash })
