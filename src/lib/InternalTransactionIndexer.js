@@ -89,8 +89,8 @@ export default class InternalTransactionIndexer {
   async indexInternalTransaction(internalTransaction) {
     try {
       await this.db.elasticsearch.bulkIndex(
-        "internal_transactions",
-        "internal_transaction",
+        "internal-transactions",
+        "internal-transaction",
         internalTransactionJson(await this.fetchData(internalTransaction))
       );
 

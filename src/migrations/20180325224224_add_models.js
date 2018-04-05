@@ -60,18 +60,6 @@ exports.up = async (knex, Promise) => {
     table.increments();
     table.string("status");
     table.jsonb("data");
-    table.string("block_hash");
-    table.index("block_hash");
-    table.string("transaction_hash");
-    table.index("transaction_hash");
-    table.string("from_address");
-    table.string("to_address");
-    table.string("downloaded_by");
-    table.timestamp("downloaded_at");
-    table.string("locked_by");
-    table.timestamp("locked_at");
-    table.string("indexed_by");
-    table.timestamp("indexed_at");
     table.timestamps(true, true);
   });
 

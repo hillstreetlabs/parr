@@ -1,0 +1,144 @@
+import Eth from "ethjs";
+import upsert from "../util/upsert";
+import withTimeout from "../util/withTimeout";
+
+const BATCH_SIZE = 5;
+const DELAY = 5000;
+
+export default class InternalTransactionDownloader {
+  constructor(db) {
+    this.db = db;
+    this.timer;
+    this.pid = `InternalTransactionDownloader@${process.pid}`;
+  }
+
+  async run() {
+    let transactions = await this.getTransactions();
+    if (transactions.length > 0) {
+      await this.processTransactions(transactions);
+      this.run();
+    } else {
+      console.log(`No ready transactions found, waiting ${DELAY}ms`);
+      this.timer = setTimeout(() => this.run(), DELAY);
+    }
+  }
+
+  async exit() {
+    console.log("Exiting...");
+    clearTimeout(this.timer);
+    const unlocked = await this.db.pg
+      .select()
+      .from("transactions")
+      .where({ locked_by: this.pid })
+      .returning("hash")
+      .update({
+        locked_by: null,
+        locked_at: null
+      });
+    console.log(`Unlocked ${unlocked.length} transactions`);
+    process.exit();
+  }
+
+  getTransactions() {
+    return this.db.pg.transaction(async trx => {
+      const transactions = await trx
+        .select()
+        .from("transactions")
+        .where({ internal_transaction_status: "ready" })
+        .limit(BATCH_SIZE);
+      const hashes = await trx
+        .select()
+        .from("transactions")
+        .whereIn("hash", transactions.map(transaction => transaction.hash))
+        .returning("hash")
+        .update({
+          internal_transaction_status: "downloading"
+        });
+      return transactions;
+    });
+  }
+
+  async processTransactions(transactions) {
+    await Promise.all(
+      transactions.map(transaction => {
+        return this.importInternalTransactions(transaction);
+      })
+    );
+  }
+
+  async importInternalTransactions(transaction) {
+    let response;
+    try {
+      response = await withTimeout(
+        this.db.etherscan.account.txlistinternal(transaction.hash),
+        7000
+      );
+    } catch (error) {
+      if (error === "No transactions found")
+        return await this.updateTransactionStatusTo(transaction.hash, "none");
+      return await this.updateTransactionStatusTo(transaction.hash, "ready");
+    }
+
+    await Promise.all(
+      response.result.map((internalTransaction, index) => {
+        return this.importInternalTransaction(
+          internalTransaction,
+          receipt,
+          index
+        );
+      })
+    );
+
+    return await this.updateTransactionStatusTo(transaction.hash, "downloaded");
+  }
+
+  async importInternalTransaction(internalTransaction, receipt, index) {
+    try {
+      const saved = await upsert(
+        this.db.pg,
+        "internal_transactions",
+        this.internalTransactionJson(internalTransaction, receipt, index),
+        "(transaction_hash, internal_transaction_index)"
+      );
+      console.log(
+        `Downloaded internal transaction ${receipt.transactionHash}:${index}`
+      );
+    } catch (err) {
+      // Silence duplicate errors
+    }
+  }
+
+  async updateTransactionStatusTo(hash, status) {
+    return await this.db
+      .pg("transactions")
+      .where({ hash: hash })
+      .update({ internal_transaction_status: status });
+  }
+
+  internalTransactionJson(transaction, receipt, index) {
+    return {
+      internal_transaction_index: index,
+      block_hash: receipt.blockHash,
+      transaction_hash: receipt.transactionHash,
+      from_address: transaction.from,
+      to_address: transaction.to,
+      status: "downloaded",
+      locked_by: null,
+      locked_at: null,
+      downloaded_by: this.pid,
+      downloaded_at: this.db.pg.fn.now(),
+      data: {
+        blockNumber: transaction.blockNumber.toString(10),
+        timestamp: transaction.timeStamp,
+        value: Eth.fromWei(transaction.value, "ether"),
+        contractAddress: transaction.contractAddress,
+        input: transaction.input,
+        type: transaction.type,
+        gas: transaction.gas.toString(10),
+        gasUsed: transaction.gasUsed.toString(10),
+        isError: transaction.isError === "0" ? false : true,
+        errCode: transaction.errCode
+      }
+    };
+  }
+}

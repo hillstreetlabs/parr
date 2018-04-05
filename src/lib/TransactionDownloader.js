@@ -107,6 +107,7 @@ export default class TransactionDownloader {
       .where("hash", hash)
       .returning("hash")
       .update({ locked_by: null, locked_at: null });
+
     return unlocked;
   }
 
@@ -138,15 +139,20 @@ export default class TransactionDownloader {
     try {
       response = await withTimeout(
         this.db.etherscan.account.txlistinternal(receipt.transactionHash),
-        5000
+        7000
       );
     } catch (error) {
-      return true;
+      if (error === "No transactions found") return true;
+      throw error;
     }
 
     return Promise.all(
-      response.result.map(internalTransaction => {
-        return this.importInternalTransaction(internalTransaction, receipt);
+      response.result.map((internalTransaction, index) => {
+        return this.importInternalTransaction(
+          internalTransaction,
+          receipt,
+          index
+        );
       })
     );
   }
@@ -161,15 +167,16 @@ export default class TransactionDownloader {
     console.log(`Downloaded log ${log.transactionHash}:${log.logIndex}`);
   }
 
-  async importInternalTransaction(internalTransaction, receipt) {
+  async importInternalTransaction(internalTransaction, receipt, index) {
     try {
-      const savedInternalTransaction = await this.db
-        .pg("internal_transactions")
-        .insert(this.internalTransactionJson(internalTransaction, receipt));
+      const saved = await upsert(
+        this.db.pg,
+        "internal_transactions",
+        this.internalTransactionJson(internalTransaction, receipt, index),
+        "(transaction_hash, internal_transaction_index)"
+      );
       console.log(
-        `Downloaded internal transaction ${receipt.transactionHash}:${
-          receipt.blockHash
-        }`
+        `Downloaded internal transaction ${receipt.transactionHash}:${index}`
       );
     } catch (err) {
       // Silence duplicate errors
@@ -193,8 +200,9 @@ export default class TransactionDownloader {
     }
   }
 
-  internalTransactionJson(transaction, receipt) {
+  internalTransactionJson(transaction, receipt, index) {
     return {
+      internal_transaction_index: index,
       block_hash: receipt.blockHash,
       transaction_hash: receipt.transactionHash,
       from_address: transaction.from,
@@ -251,6 +259,7 @@ export default class TransactionDownloader {
     return {
       hash: receipt.transactionHash,
       status: "downloaded",
+      internal_transaction_status: "ready",
       locked_by: null,
       locked_at: null,
       downloaded_by: this.pid,

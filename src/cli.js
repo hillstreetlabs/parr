@@ -18,6 +18,7 @@ import BlockDownloader from "./lib/BlockDownloader";
 import TransactionDownloader from "./lib/TransactionDownloader";
 import InternalTransactionIndexer from "./lib/InternalTransactionIndexer";
 import implementsAbi from "./util/implementsAbi";
+import withTimeout from "./util/withTimeout";
 
 program
   .command("watch")
@@ -206,6 +207,21 @@ program
     const answer = result ? "DOES" : "DOES NOT";
     console.log(
       `Address ${options.address} ${answer} implement ${options.file}`
+    );
+  });
+
+program
+  .command("test")
+  .description("Check address for ERC standards")
+  .action(async options => {
+    const db = await initDb();
+    console.log(
+      await withTimeout(
+        db.web3.getTransactionReceipt(
+          "0xfc218cad4a4231559b89b62a66b66017de7b1c06679c2efafd1b85aaeeb3916b"
+        ),
+        5000
+      )
     );
   });
 
