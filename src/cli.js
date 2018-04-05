@@ -18,7 +18,6 @@ import BlockDownloader from "./lib/BlockDownloader";
 import TransactionDownloader from "./lib/TransactionDownloader";
 import InternalTransactionIndexer from "./lib/InternalTransactionIndexer";
 import implementsAbi from "./util/implementsAbi";
-import decodeTimeField from "./util/decodeTimeField";
 
 program
   .command("watch")

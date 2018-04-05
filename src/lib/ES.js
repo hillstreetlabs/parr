@@ -32,8 +32,6 @@ export default class ES {
       const indexExists = await this.client.indices.exists({
         index: indexName
       });
-      console.log(indexName, indexExists);
-
       if (indexExists) await this.client.indices.delete({ index: indexName });
       this.client.indices.create({ index: indexName });
     });
