@@ -1,22 +1,3 @@
-// Index should have
-// - address data
-// - block data
-// - internal transaction data
-// -  transaction data
-
-// [ { blockNumber: '5380549',
-//        timeStamp: '1522866421',
-//        from: '0x06012c8cf97bead5deae237070f9587f8e7a266d',
-//        to: '0xc5f60fa4613493931b605b6da1e9febbdeb61e16',
-//        value: '8000000000000000',
-//        contractAddress: '',
-//        input: '',
-//        type: 'call',
-//        gas: '2300',
-//        gasUsed: '0',
-//        isError: '0',
-//        errCode: '' } ] }
-
 import { internalTransactionJson } from "../util/esJson";
 
 const BATCH_SIZE = 50;
@@ -30,9 +11,9 @@ export default class InternalTransactionIndexer {
   }
 
   async run() {
-    let blocks = await this.getInternalTransactions();
-    if (blocks.length > 0) {
-      await this.indexBlocks(blocks);
+    let transactions = await this.getInternalTransactions();
+    if (transactions.length > 0) {
+      await this.indexInternalTransactions(transactions);
       this.run();
     } else {
       console.log(
@@ -54,55 +35,69 @@ export default class InternalTransactionIndexer {
         locked_by: null,
         locked_at: null
       });
-    console.log(`Unlocked ${unlocked.length} blocks`);
+    console.log(`Unlocked ${unlocked.length} internal transactions`);
     process.exit();
   }
 
   getInternalTransactions() {
     return this.db.pg.transaction(async trx => {
-      const blocks = await trx
+      const transactions = await trx
         .select()
         .from("internal_transactions")
-        .where({ status: "indexable", locked_by: null })
+        .where({ status: "downloaded", locked_by: null })
         .limit(BATCH_SIZE);
-      const hashes = await trx
+      await trx
         .select()
-        .from("blocks")
-        .whereIn("hash", blocks.map(block => block.hash))
-        .returning("hash")
+        .from("internal_transactions")
+        .whereIn("id", transactions.map(transaction => transaction.id))
         .update({
           locked_by: this.pid,
           locked_at: this.db.pg.fn.now()
         });
-      return blocks;
+      return transactions;
     });
   }
 
-  async indexBlocks(blocks) {
-    await Promise.all(blocks.map(block => this.indexBlock(block)));
+  async indexInternalTransactions(transactions) {
+    await Promise.all(
+      transactions.map(transaction =>
+        this.indexInternalTransaction(transaction)
+      )
+    );
   }
 
-  async fetchBlockData(block) {
-    block.transactions = await this.db
+  async fetchData(internalTransaction) {
+    internalTransaction.transaction = await this.db
       .pg("transactions")
-      .where({ status: "indexed", block_hash: block.hash });
-    block.logs = this.db.pg("logs").where({ block_hash: block.hash });
+      .where({ hash: internalTransaction.transaction_hash })
+      .first();
+    internalTransaction.fromAddress = this.db
+      .pg("addresses")
+      .where({ address: internalTransaction.from_address })
+      .first();
+    internalTransaction.toAddress = this.db
+      .pg("addresses")
+      .where({ address: internalTransaction.to_address })
+      .first();
+    internalTransaction.block = this.db
+      .pg("blocks")
+      .where({ hash: internalTransaction.block_hash })
+      .first();
 
-    return block;
+    return internalTransaction;
   }
 
-  async indexBlock(block) {
+  async indexInternalTransaction(internalTransaction) {
     try {
       await this.db.elasticsearch.bulkIndex(
-        "blocks",
-        "block",
-        blockJson(await this.fetchBlockData(block))
+        "internalTransactions",
+        "internalTransaction",
+        internalTransactionJson(await this.fetchData(internalTransaction))
       );
 
-      throw "ASd";
       await this.db
-        .pg("blocks")
-        .where({ hash: block.hash })
+        .pg("internal_transactions")
+        .where({ id: internalTransaction.id })
         .update({
           status: "indexed",
           locked_by: null,
@@ -111,18 +106,21 @@ export default class InternalTransactionIndexer {
           indexed_at: this.db.pg.fn.now()
         });
 
-      console.log(`Indexed block ${block.hash}`);
+      console.log(`Indexed internal transaction ${internalTransaction.id}`);
     } catch (error) {
-      console.log(`Failed to index block ${block.hash}`, error);
-      return await this.unlockBlock(block.hash);
+      console.log(
+        `Failed to index internal transaction ${internalTransaction.id}`,
+        error
+      );
+      return await this.unlockInternalTransaction(internalTransaction.id);
     }
   }
 
-  async unlockBlock(hash) {
+  async unlockInternalTransaction(id) {
     const unlocked = await this.db
       .pg("blocks")
-      .where("hash", hash)
-      .returning("hash")
+      .where("id", id)
+      .returning("id")
       .update({ locked_by: null, locked_at: null });
     return unlocked;
   }

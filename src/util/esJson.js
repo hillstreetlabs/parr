@@ -70,3 +70,29 @@ export const addressJson = address => {
     )
   };
 };
+
+export const internalTransactionJson = internalTransaction => {
+  return {
+    from: internalTransaction.fromAddress
+      ? addressJson(internalTransaction.fromAddress)
+      : {},
+    to: internalTransaction.toAddress
+      ? addressJson(internalTransaction.toAddress)
+      : {},
+    block: internalTransaction.block
+      ? blockJson(internalTransaction.block)
+      : {},
+    transaction: internalTransaction.transaction
+      ? transactionJson(internalTransaction.transaction)
+      : {},
+    timeStamp: internalTransaction.data.timeStamp,
+    value: internalTransaction.data.value,
+    contractAddress: internalTransaction.data.contractAddress,
+    input: internalTransaction.data.input,
+    type: internalTransaction.data.type,
+    gas: internalTransaction.data.gas,
+    gasUsed: internalTransaction.data.gasUsed,
+    isError: internalTransaction.data.isError,
+    errCode: internalTransaction.data.errCode
+  };
+};
