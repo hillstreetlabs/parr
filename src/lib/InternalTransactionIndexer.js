@@ -11,9 +11,9 @@ export default class InternalTransactionIndexer {
   }
 
   async run() {
-    let transactions = await this.getInternalTransactions();
-    if (transactions.length > 0) {
-      await this.indexInternalTransactions(transactions);
+    let internalTransactions = await this.getInternalTransactions();
+    if (internalTransactions.length > 0) {
+      await this.indexInternalTransactions(internalTransactions);
       this.run();
     } else {
       console.log(
@@ -58,10 +58,10 @@ export default class InternalTransactionIndexer {
     });
   }
 
-  async indexInternalTransactions(transactions) {
+  async indexInternalTransactions(internalTransactions) {
     await Promise.all(
-      transactions.map(transaction =>
-        this.indexInternalTransaction(transaction)
+      internalTransactions.map(internalTransaction =>
+        this.indexInternalTransaction(internalTransaction)
       )
     );
   }
@@ -118,7 +118,7 @@ export default class InternalTransactionIndexer {
 
   async unlockInternalTransaction(id) {
     const unlocked = await this.db
-      .pg("blocks")
+      .pg("internal_transactions")
       .where("id", id)
       .returning("id")
       .update({ locked_by: null, locked_at: null });

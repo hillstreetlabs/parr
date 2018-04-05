@@ -156,11 +156,11 @@ export default class TransactionDownloader {
     console.log(`Downloaded log ${log.transactionHash}:${log.logIndex}`);
   }
 
-  async importInternalTransaction(transaction, receipt) {
+  async importInternalTransaction(internalTransaction, receipt) {
     try {
-      savedTransactions = await this.db
+      savedInternalTransaction = await this.db
         .pg("internal_transactions")
-        .insert(this.internalTransactionJson(transaction, receipt));
+        .insert(this.internalTransactionJson(internalTransaction, receipt));
       console.log(
         `Downloaded internal transaction ${receipt.transactionHash}:${
           receipt.blockHash
