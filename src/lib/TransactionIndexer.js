@@ -66,42 +66,44 @@ export default class TransactionIndexer {
   async indexTransaction(transaction) {
     try {
       transaction = await this.fetchTransactionData(transaction);
-      const parsedTransaction = transactionJson(transaction);
-
-      // Index logs and update status
-      await this.db.elasticsearch.bulkIndex(
-        "logs",
-        "log",
-        parsedTransaction.logs
+      await Promise.all([
+        this.db.elasticsearch.bulkIndex(
+          "logs",
+          "log",
+          transaction.logs.map(log =>
+            Object.assign(log, { block: transaction.block })
+          )
+        ),
+        this.db
+          .pg("logs")
+          .where({ transaction_hash: transaction.hash })
+          .update({
+            status: "indexed",
+            indexed_by: this.pid,
+            indexed_at: this.db.pg.fn.now()
+          }),
+        this.db.elasticsearch.bulkIndex(
+          "transactions",
+          "transaction",
+          transactionJson(transaction)
+        ),
+        this.db
+          .pg("transactions")
+          .where({ hash: transaction.hash })
+          .update({
+            status: "indexed",
+            locked_by: null,
+            locked_at: null,
+            indexed_by: this.pid,
+            indexed_at: this.db.pg.fn.now()
+          })
+      ]);
+      console.log(
+        `Indexed transaction ${transaction.hash} and ${
+          transaction.logs.length
+        } logs`
       );
-      await this.db
-        .pg("logs")
-        .where({ transaction_hash: transaction.hash })
-        .update({
-          status: "indexed",
-          indexed_by: this.pid,
-          indexed_at: this.db.pg.fn.now()
-        });
-
-      // Index transactions and update status
-      await this.db.elasticsearch.bulkIndex(
-        "transactions",
-        "transaction",
-        parsedTransaction
-      );
-      await this.db
-        .pg("transactions")
-        .where({ hash: transaction.hash })
-        .update({
-          status: "indexed",
-          locked_by: null,
-          locked_at: null,
-          indexed_by: this.pid,
-          indexed_at: this.db.pg.fn.now()
-        });
-      console.log(`Indexed transaction ${transaction.hash}`);
-
-      await this.prepareBlockForIndexing(transaction.block);
+      this.prepareBlockForIndexing(transaction.block);
     } catch (error) {
       console.log(`Failed to index transaction ${transaction.hash}`, error);
       return this.unlockTransaction(transaction.hash);
