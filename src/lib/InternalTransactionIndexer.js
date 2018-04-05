@@ -2,6 +2,20 @@
 // - address data
 // - block data
 // - internal transaction data
+// -  transaction data
+
+// [ { blockNumber: '5380549',
+//        timeStamp: '1522866421',
+//        from: '0x06012c8cf97bead5deae237070f9587f8e7a266d',
+//        to: '0xc5f60fa4613493931b605b6da1e9febbdeb61e16',
+//        value: '8000000000000000',
+//        contractAddress: '',
+//        input: '',
+//        type: 'call',
+//        gas: '2300',
+//        gasUsed: '0',
+//        isError: '0',
+//        errCode: '' } ] }
 
 import { internalTransactionJson } from "../util/esJson";
 

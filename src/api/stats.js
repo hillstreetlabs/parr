@@ -5,60 +5,58 @@ import { Router } from "express";
 export default ({ config, db }) => {
   let api = Router();
 
-
   api.use("/", async (req, res) => {
-
-    const blockCount = await db
-      .pg("blocks")
-      .count()
+    const blockCount = await db.pg("blocks").count();
 
     const blockCountByStatus = await db
       .pg("blocks")
       .select("status")
       .groupBy("status")
-      .count()
+      .count();
 
     const mostRecentBlock = await db
       .pg("blocks")
-      .orderBy("number")
-      .first()
+      .orderBy("number", "desc")
+      .first();
 
-    const transactionCount = await db
-      .pg("transactions")
-      .count()
+    const transactionCount = await db.pg("transactions").count();
 
     const transactionCountByStatus = await db
       .pg("transactions")
       .select("status")
       .groupBy("status")
-      .count()
+      .count();
 
-    const logCount = await db
-      .pg("logs")
-      .count()
+    const logCount = await db.pg("logs").count();
 
     const logCountByStatus = await db
       .pg("logs")
       .select("status")
       .groupBy("status")
-      .count()
+      .count();
     const logDecodedCount = await db
       .pg("logs")
       .whereRaw("decoded::text <> '{}'::text")
-      .count()
+      .count();
+
+    const addressCount = await db.pg("addresses").count();
 
     const contractCount = await db
-      .pg("contracts")
-      .count()
+      .pg("addresses")
+      .where("is_contract", true)
+      .count();
 
-    const genericContractCount = await db
-      .pg("contracts")
-      .whereNull("address")
-      .count()
+    const erc20Count = await db
+      .pg("addresses")
+      .where("is_erc20", true)
+      .count();
 
-    const elasticSearchIndexStats = await db
-      .elasticsearch
-      .stats()
+    const erc721Count = await db
+      .pg("addresses")
+      .where("is_erc721", true)
+      .count();
+
+    const elasticSearchIndexStats = await db.elasticsearch.stats();
 
     res.json({
       blocks: {
@@ -75,9 +73,11 @@ export default ({ config, db }) => {
         decoded_count: logDecodedCount[0].count,
         count_by_status: logCountByStatus
       },
-      contracts: {
-        total_count: contractCount[0].count,
-        generic_count: genericContractCount[0].count
+      addresses: {
+        total_count: addressCount[0].count,
+        contract_count: contractCount[0].count,
+        erc20_count: erc20Count[0].count,
+        erc721_count: erc721Count[0].count
       },
       elasticsearch: {
         indices: elasticSearchIndexStats
