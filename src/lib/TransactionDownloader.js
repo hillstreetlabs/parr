@@ -87,6 +87,9 @@ export default class TransactionDownloader {
         this.importAddress(receipt.from)
       ]);
       const logs = await this.importLogs(receipt);
+      const internalTransactions = await this.importInternalTransactions(
+        receipt
+      );
       console.log(`Downloaded transaction ${transaction.hash}`);
     } catch (err) {
       console.log(
@@ -107,6 +110,29 @@ export default class TransactionDownloader {
   }
 
   async importLogs(receipt) {
+    let decoded;
+    const contract = await this.db
+      .pg("addresses")
+      .where("address", receipt.to)
+      .first();
+    if (contract && contract.abi) {
+      try {
+        const decoder = Eth.abi.logDecoder(contract.abi);
+        decoded = decoder(receipt.logs);
+      } catch (error) {
+        decoded = [];
+      }
+    } else {
+      decoded = [];
+    }
+    return Promise.all(
+      receipt.logs.map((log, index) => {
+        return this.importLog(log, decoded[index], receipt.blockHash);
+      })
+    );
+  }
+
+  async importInternalTransactions(receipt) {
     let decoded;
     const contract = await this.db
       .pg("addresses")

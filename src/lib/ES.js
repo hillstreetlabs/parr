@@ -1,6 +1,6 @@
 import Elasticsearch from "elasticsearch";
 
-const INDICES = ["blocks", "transactions", "logs", "accounts"];
+const INDICES = ["blocks", "transactions", "logs", "addresses"];
 
 export default class ES {
   constructor() {
@@ -68,16 +68,14 @@ export default class ES {
       bulkBody.push({ doc: item, doc_as_upsert: true });
     });
 
-    return this.client
-      .bulk({ body: bulkBody })
-      .then(response => {
-        let errorCount = 0;
-        response.items.forEach(item => {
-          if (item.index && item.index.error) {
-            console.log(++errorCount, item.index.error);
-          }
-        });
-      })
-      .catch(console.err);
+    return this.client.bulk({ body: bulkBody }).then(response => {
+      let errorCount = 0;
+      response.items.forEach(item => {
+        if (item.index && item.index.error) {
+          console.log(++errorCount, item.index.error);
+        }
+      });
+      return response;
+    });
   }
 }
