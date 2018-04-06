@@ -73,12 +73,8 @@ export const addressJson = address => {
 
 export const internalTransactionJson = internalTransaction => {
   return {
-    from: internalTransaction.fromAddress
-      ? addressJson(internalTransaction.fromAddress)
-      : {},
-    to: internalTransaction.toAddress
-      ? addressJson(internalTransaction.toAddress)
-      : {},
+    from: internalTransaction.from_address,
+    to: internalTransaction.to_address,
     block: internalTransaction.block
       ? blockJson(internalTransaction.block)
       : {},
