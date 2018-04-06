@@ -1,4 +1,6 @@
-# parr :mag:
+<img width="35%" src="https://github.com/hillstreetlabs/parr-web/blob/master/src/assets/images/logo.png" />
+
+---------
 
 Index the Ethereum blockchain to search more intelligently.
 
