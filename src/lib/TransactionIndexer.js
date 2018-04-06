@@ -75,6 +75,16 @@ export default class TransactionIndexer {
           )
         ),
         this.db.elasticsearch.bulkIndex(
+          "internal-transactions",
+          "internal-transaction",
+          transaction.internalTransactinos.map(txn =>
+            Object.assign(txn, {
+              block: transaction.block,
+              transaction: transaction
+            })
+          )
+        ),
+        this.db.elasticsearch.bulkIndex(
           "transactions",
           "transaction",
           transactionJson(transaction)
@@ -83,6 +93,14 @@ export default class TransactionIndexer {
       await Promise.all([
         this.db
           .pg("logs")
+          .where({ transaction_hash: transaction.hash })
+          .update({
+            status: "indexed",
+            indexed_by: this.pid,
+            indexed_at: this.db.pg.fn.now()
+          }),
+        this.db
+          .pg("internal_transactinos")
           .where({ transaction_hash: transaction.hash })
           .update({
             status: "indexed",
@@ -120,6 +138,10 @@ export default class TransactionIndexer {
 
     transaction.logs = await this.db
       .pg("logs")
+      .where({ transaction_hash: transaction.hash });
+
+    transaction.internalTransactinos = await this.db
+      .pg("internal_transactinos")
       .where({ transaction_hash: transaction.hash });
 
     return transaction;

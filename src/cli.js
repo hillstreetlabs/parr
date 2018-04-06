@@ -17,7 +17,6 @@ import BlockWatcher from "./lib/BlockWatcher";
 import BlockDownloader from "./lib/BlockDownloader";
 import TransactionDownloader from "./lib/TransactionDownloader";
 import InternalTransactionDownloader from "./lib/InternalTransactionDownloader";
-import InternalTransactionIndexer from "./lib/InternalTransactionIndexer";
 import implementsAbi from "./util/implementsAbi";
 import withTimeout from "./util/withTimeout";
 
@@ -124,18 +123,6 @@ program
   .action(async options => {
     const db = await initDb();
     const indexer = new AddressIndexer(db);
-    indexer.run();
-    process.on("SIGINT", () => indexer.exit());
-  });
-
-program
-  .command("indexInternalTransactions")
-  .description(
-    "index internal transaction(s) from Parr PG instance to Parr ES instance"
-  )
-  .action(async options => {
-    const db = await initDb();
-    const indexer = new InternalTransactionIndexer(db);
     indexer.run();
     process.on("SIGINT", () => indexer.exit());
   });
