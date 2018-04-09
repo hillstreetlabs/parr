@@ -1,3 +1,4 @@
+import uuid from "uuid";
 import Eth from "ethjs";
 import { action, computed, observable } from "mobx";
 import upsert from "../util/upsert";
@@ -10,7 +11,7 @@ export default class BlockDownloader {
   constructor(db, options) {
     this.db = db;
     this.timer;
-    this.pid = `BlockDownloader@${process.pid}`;
+    this.pid = `BlockDownloader@${uuid.v4()}`;
   }
 
   async run() {

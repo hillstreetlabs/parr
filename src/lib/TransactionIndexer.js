@@ -1,3 +1,4 @@
+import uuid from "uuid";
 import { logJson, transactionJson } from "../util/esJson";
 
 const BATCH_SIZE = 50;
@@ -7,7 +8,7 @@ export default class TransactionIndexer {
   constructor(db) {
     this.db = db;
     this.timer;
-    this.pid = `TransactionIndexer@${process.pid}`;
+    this.pid = `TransactionIndexer@${uuid.v4()}`;
   }
 
   async run() {

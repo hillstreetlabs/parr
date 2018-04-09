@@ -1,3 +1,4 @@
+import uuid from "uuid";
 import Eth from "ethjs";
 import upsert from "../util/upsert";
 import withTimeout from "../util/withTimeout";
@@ -9,7 +10,7 @@ export default class InternalTransactionDownloader {
   constructor(db) {
     this.db = db;
     this.timer;
-    this.pid = `InternalTransactionDownloader@${process.pid}`;
+    this.pid = `InternalTransactionDownloader@${uuid.v4()}`;
   }
 
   async run() {
