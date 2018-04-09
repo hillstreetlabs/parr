@@ -30,10 +30,12 @@ export default class InternalTransactionDownloader {
     const unlocked = await this.db.pg
       .select()
       .from("transactions")
-      .where({ internal_transaction_status: "downloading" })
+      .where({ locked_by: this.pid })
       .returning("hash")
       .update({
-        internal_transaction_status: "ready"
+        internal_transaction_status: "ready",
+        locked_by: null,
+        locked_at: null
       });
     console.log(`Unlocked ${unlocked.length} transactions`);
     process.exit();
@@ -52,7 +54,9 @@ export default class InternalTransactionDownloader {
         .whereIn("hash", transactions.map(transaction => transaction.hash))
         .returning("hash")
         .update({
-          internal_transaction_status: "downloading"
+          internal_transaction_status: "downloading",
+          locked_by: this.pid,
+          locked_at: this.db.pg.fn.now()
         });
       return transactions;
     });
@@ -101,7 +105,11 @@ export default class InternalTransactionDownloader {
     return await this.db
       .pg("transactions")
       .where({ hash: hash })
-      .update({ internal_transaction_status: status });
+      .update({
+        internal_transaction_status: status,
+        locked_by: null,
+        locked_at: null
+      });
   }
 
   internalTransactionJson(internalTransaction, transaction, index) {
