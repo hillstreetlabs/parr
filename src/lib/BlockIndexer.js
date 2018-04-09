@@ -1,3 +1,4 @@
+import uuid from "uuid";
 import { blockJson } from "../util/esJson";
 
 const BATCH_SIZE = 50;
@@ -7,7 +8,7 @@ export default class BlockIndexer {
   constructor(db) {
     this.db = db;
     this.timer;
-    this.pid = `BlockIndexer@${process.pid}`;
+    this.pid = `BlockIndexer@${uuid.v4()}`;
   }
 
   async run() {
