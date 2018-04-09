@@ -1,4 +1,5 @@
 import uuid from "uuid";
+import omit from "lodash/omit";
 import { logJson, transactionJson } from "../util/esJson";
 
 const BATCH_SIZE = 50;
@@ -81,7 +82,7 @@ export default class TransactionIndexer {
           transaction.internalTransactions.map(internalTransaction =>
             Object.assign(internalTransaction, {
               block: transaction.block,
-              transaction: transaction
+              transaction: omit(transaction, ["block", "internalTransactions"])
             })
           )
         ),

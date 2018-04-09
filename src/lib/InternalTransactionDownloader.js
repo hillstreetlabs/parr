@@ -98,6 +98,12 @@ export default class InternalTransactionDownloader {
 
     await this.db.pg("internal_transactions").insert(internalTransactions);
 
+    console.log(
+      `Downloaded ${
+        internalTransactions.length
+      } internal transaction(s) from transaction ${transaction.hash}`
+    );
+
     return this.updateTransactionStatusTo(transaction.hash, "downloaded");
   }
 
