@@ -73,6 +73,8 @@ export default class TransactionIndexer {
   }
 
   async run() {
+    if (this.isExiting) return;
+
     let transactions = await this.getTransactions();
     if (transactions.length > 0) {
       await Promise.all(
@@ -86,6 +88,7 @@ export default class TransactionIndexer {
   }
 
   async exit() {
+    this.isExiting = true;
     console.log("Exiting...");
     clearTimeout(this.timeout);
     const unlocked = await this.db.pg
