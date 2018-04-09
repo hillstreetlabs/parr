@@ -27,7 +27,7 @@ export const transactionJson = transaction => {
     gasUsed: transaction.receipt.gasUsed,
     hash: transaction.hash,
     id: transaction.id,
-    internalTransactions: (transaction.internalTransactionJson || []).map(
+    internalTransactions: (transaction.internalTransactions || []).map(
       internalTransaction => internalTransactionJson(internalTransaction)
     ),
     logs: (transaction.logs || []).map(log => logJson(log)),

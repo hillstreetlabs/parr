@@ -74,8 +74,11 @@ export default class InternalTransactionDownloader {
       );
     } catch (error) {
       if (error === "No transactions found")
-        return await this.updateTransactionStatusTo(transaction.hash, "none");
-      return await this.updateTransactionStatusTo(transaction.hash, "ready");
+        return await this.updateTransactionStatusTo(
+          transaction.hash,
+          "downloaded"
+        );
+      return this.updateTransactionStatusTo(transaction.hash, "ready");
     }
 
     await Promise.all(
@@ -88,23 +91,16 @@ export default class InternalTransactionDownloader {
       })
     );
 
-    return await this.updateTransactionStatusTo(transaction.hash, "downloaded");
+    return this.updateTransactionStatusTo(transaction.hash, "downloaded");
   }
 
   async importInternalTransaction(internalTransaction, transaction, index) {
-    try {
-      const saved = await upsert(
-        this.db.pg,
-        "internal_transactions",
-        this.internalTransactionJson(internalTransaction, transaction, index),
-        "(transaction_hash, internal_transaction_index)"
+    await this.db
+      .pg("internal_transactions")
+      .insert(
+        this.internalTransactionJson(internalTransaction, transaction, index)
       );
-      console.log(
-        `Downloaded internal transaction ${transaction.hash}:${index}`
-      );
-    } catch (err) {
-      // Silence duplicate errors
-    }
+    console.log(`Downloaded internal transaction ${transaction.hash}:${index}`);
   }
 
   async updateTransactionStatusTo(hash, status) {

@@ -2,7 +2,6 @@ import Eth from "ethjs";
 import upsert from "../util/upsert";
 import withTimeout from "../util/withTimeout";
 import implementsAbi from "../util/implementsAbi";
-import decodeTimeField from "../util/decodeTimeField";
 import ERC20 from "../../contracts/ERC20.json";
 import ERC721 from "../../contracts/ERC721.json";
 

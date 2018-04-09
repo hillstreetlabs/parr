@@ -77,8 +77,8 @@ export default class TransactionIndexer {
         this.db.elasticsearch.bulkIndex(
           "internal-transactions",
           "internal-transaction",
-          transaction.internalTransactinos.map(txn =>
-            Object.assign(txn, {
+          transaction.internalTransactions.map(internalTransaction =>
+            Object.assign(internalTransaction, {
               block: transaction.block,
               transaction: transaction
             })
@@ -100,7 +100,7 @@ export default class TransactionIndexer {
             indexed_at: this.db.pg.fn.now()
           }),
         this.db
-          .pg("internal_transactinos")
+          .pg("internal_transactions")
           .where({ transaction_hash: transaction.hash })
           .update({
             status: "indexed",
@@ -140,8 +140,8 @@ export default class TransactionIndexer {
       .pg("logs")
       .where({ transaction_hash: transaction.hash });
 
-    transaction.internalTransactinos = await this.db
-      .pg("internal_transactinos")
+    transaction.internalTransactions = await this.db
+      .pg("internal_transactions")
       .where({ transaction_hash: transaction.hash });
 
     return transaction;

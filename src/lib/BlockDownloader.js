@@ -2,7 +2,6 @@ import Eth from "ethjs";
 import { action, computed, observable } from "mobx";
 import upsert from "../util/upsert";
 import withTimeout from "../util/withTimeout";
-import decodeTimeField from "../util/decodeTimeField";
 
 const BATCH_SIZE = 20;
 const DELAY = 5000;
@@ -108,6 +107,10 @@ export default class BlockDownloader {
     return unlocked;
   }
 
+  decodeTimeField(field) {
+    return new Date(field.mul(new Eth.BN(1000)).toNumber(10)).toISOString();
+  }
+
   transactionJson(transaction) {
     return {
       hash: transaction.hash,
@@ -150,7 +153,7 @@ export default class BlockDownloader {
         nonce: block.nonce.toString(10),
         parentHash: block.parentHash,
         size: block.size.toString(10),
-        timestamp: decodeTimeField(block.timestamp),
+        timestamp: this.decodeTimeField(block.timestamp),
         transactionCount: (block.transactions || []).length
       }
     };
