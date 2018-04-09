@@ -1,3 +1,4 @@
+import uuid from "uuid";
 import { addressJson } from "../util/esJson";
 
 const BATCH_SIZE = 20;
@@ -7,7 +8,7 @@ export default class AddressIndexer {
   constructor(db) {
     this.db = db;
     this.timer;
-    this.pid = `AddressIndexer@${process.pid}`;
+    this.pid = `AddressIndexer@${uuid.v4()}`;
   }
 
   async run() {

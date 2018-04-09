@@ -27,6 +27,9 @@ export const transactionJson = transaction => {
     gasUsed: transaction.receipt.gasUsed,
     hash: transaction.hash,
     id: transaction.id,
+    internalTransactions: (transaction.internalTransactions || []).map(
+      internalTransaction => internalTransactionJson(internalTransaction)
+    ),
     logs: (transaction.logs || []).map(log => logJson(log)),
     logsBloom: transaction.receipt.logsBloom,
     nonce: transaction.data.nonce,
@@ -68,5 +71,29 @@ export const addressJson = address => {
     transactions: (address.transactions || []).map(transaction =>
       transactionJson(transaction)
     )
+  };
+};
+
+export const internalTransactionJson = internalTransaction => {
+  return {
+    from: internalTransaction.from_address,
+    to: internalTransaction.to_address,
+    block: internalTransaction.block
+      ? blockJson(internalTransaction.block)
+      : {},
+    transaction: internalTransaction.transaction
+      ? transactionJson(internalTransaction.transaction)
+      : {},
+    timestamp: internalTransaction.data.timestamp,
+    value: internalTransaction.data.value,
+    contractAddress: internalTransaction.data.contractAddress,
+    input: internalTransaction.data.input,
+    id: internalTransaction.id,
+    type: internalTransaction.data.type,
+    gas: internalTransaction.data.gas,
+    gasUsed: internalTransaction.data.gasUsed,
+    isError: internalTransaction.data.isError,
+    errCode: internalTransaction.data.errCode,
+    blockNumber: internalTransaction.data.blockNumber
   };
 };

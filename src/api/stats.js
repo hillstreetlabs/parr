@@ -14,11 +14,6 @@ export default ({ config, db }) => {
       .groupBy("status")
       .count();
 
-    const mostRecentBlock = await db
-      .pg("blocks")
-      .orderBy("number", "desc")
-      .first();
-
     const transactionCount = await db.pg("transactions").count();
 
     const transactionCountByStatus = await db
@@ -56,13 +51,10 @@ export default ({ config, db }) => {
       .where("is_erc721", true)
       .count();
 
-    const elasticSearchIndexStats = await db.elasticsearch.stats();
-
     res.json({
       blocks: {
         total_count: blockCount[0].count,
-        count_by_status: blockCountByStatus,
-        last: mostRecentBlock
+        count_by_status: blockCountByStatus
       },
       transactions: {
         total_count: transactionCount[0].count,
@@ -78,9 +70,6 @@ export default ({ config, db }) => {
         contract_count: contractCount[0].count,
         erc20_count: erc20Count[0].count,
         erc721_count: erc721Count[0].count
-      },
-      elasticsearch: {
-        indices: elasticSearchIndexStats
       }
     });
   });

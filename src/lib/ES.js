@@ -1,6 +1,12 @@
 import Elasticsearch from "elasticsearch";
 
-const INDICES = ["blocks", "transactions", "logs", "addresses"];
+const INDICES = [
+  "blocks",
+  "transactions",
+  "logs",
+  "addresses",
+  "internal-transactions"
+];
 
 export default class ES {
   constructor() {

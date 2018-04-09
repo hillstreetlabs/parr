@@ -16,6 +16,7 @@ import BlockImporter from "./lib/BlockImporter";
 import BlockWatcher from "./lib/BlockWatcher";
 import BlockDownloader from "./lib/BlockDownloader";
 import TransactionDownloader from "./lib/TransactionDownloader";
+import InternalTransactionDownloader from "./lib/InternalTransactionDownloader";
 import implementsAbi from "./util/implementsAbi";
 
 program
@@ -81,6 +82,16 @@ program
   .action(async options => {
     const db = await initDb();
     const downloader = new TransactionDownloader(db);
+    downloader.run();
+    process.on("SIGINT", () => downloader.exit());
+  });
+
+program
+  .command("downloadInternalTransactions")
+  .description("download internal transaction(s) from Ethereum to Parr")
+  .action(async options => {
+    const db = await initDb();
+    const downloader = new InternalTransactionDownloader(db);
     downloader.run();
     process.on("SIGINT", () => downloader.exit());
   });
