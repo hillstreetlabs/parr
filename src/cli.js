@@ -208,8 +208,4 @@ program
     );
   });
 
-program.command("test").action(async options => {
-  console.log(uuid.v4());
-});
-
 program.parse(process.argv);
