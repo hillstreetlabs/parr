@@ -106,7 +106,6 @@ export default class TransactionDownloader {
       .where("hash", hash)
       .returning("hash")
       .update({ locked_by: null, locked_at: null });
-
     return unlocked;
   }
 
@@ -186,7 +185,6 @@ export default class TransactionDownloader {
     return {
       hash: receipt.transactionHash,
       status: "downloaded",
-      internal_transaction_status: "ready",
       locked_by: null,
       locked_at: null,
       downloaded_by: this.pid,

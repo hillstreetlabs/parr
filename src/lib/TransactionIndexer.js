@@ -18,7 +18,7 @@ export default class TransactionIndexer {
       await this.indexTransactions(transactions);
       this.run();
     } else {
-      console.log(`No downloaded transactions found, waiting ${DELAY}ms`);
+      console.log(`No indexable transactions found, waiting ${DELAY}ms`);
       this.timer = setTimeout(() => this.run(), DELAY);
     }
   }
@@ -44,7 +44,7 @@ export default class TransactionIndexer {
       const transactions = await trx
         .select()
         .from("transactions")
-        .where({ status: "downloaded", locked_by: null })
+        .where({ status: "indexable", locked_by: null })
         .limit(BATCH_SIZE);
       const hashes = await trx
         .select()
@@ -121,9 +121,11 @@ export default class TransactionIndexer {
           })
       ]);
       console.log(
-        `Indexed transaction ${transaction.hash} and ${
+        `Indexed transaction ${transaction.hash}, ${
           transaction.logs.length
-        } logs`
+        } logs and ${
+          transaction.internalTransactions.length
+        } internal transactions`
       );
       this.prepareBlockForIndexing(transaction.block);
     } catch (error) {

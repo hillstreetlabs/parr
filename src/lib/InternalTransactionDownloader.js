@@ -33,7 +33,6 @@ export default class InternalTransactionDownloader {
       .where({ locked_by: this.pid })
       .returning("hash")
       .update({
-        internal_transaction_status: "ready",
         locked_by: null,
         locked_at: null
       });
@@ -46,7 +45,7 @@ export default class InternalTransactionDownloader {
       const transactions = await trx
         .select()
         .from("transactions")
-        .where({ internal_transaction_status: "ready" })
+        .where({ status: "downloaded" })
         .limit(BATCH_SIZE);
       const hashes = await trx
         .select()
@@ -54,7 +53,6 @@ export default class InternalTransactionDownloader {
         .whereIn("hash", transactions.map(transaction => transaction.hash))
         .returning("hash")
         .update({
-          internal_transaction_status: "downloading",
           locked_by: this.pid,
           locked_at: this.db.pg.fn.now()
         });
@@ -78,12 +76,22 @@ export default class InternalTransactionDownloader {
         5000
       );
     } catch (error) {
-      if (error === "No transactions found")
+      if (error === "No transactions found") {
+        console.log(
+          `No internal transactions found for transaction ${transaction.hash}`
+        );
         return await this.updateTransactionStatusTo(
           transaction.hash,
-          "downloaded"
+          "indexable"
         );
-      return this.updateTransactionStatusTo(transaction.hash, "ready");
+      }
+
+      console.log(
+        `Error downloading internal transactions for transaction ${
+          transaction.hash
+        }`
+      );
+      return this.updateTransactionStatusTo(transaction.hash, "downloaded");
     }
 
     const internalTransactions = response.result.map(
@@ -104,7 +112,7 @@ export default class InternalTransactionDownloader {
       } internal transaction(s) from transaction ${transaction.hash}`
     );
 
-    return this.updateTransactionStatusTo(transaction.hash, "downloaded");
+    return this.updateTransactionStatusTo(transaction.hash, "indexable");
   }
 
   async updateTransactionStatusTo(hash, status) {
@@ -112,7 +120,7 @@ export default class InternalTransactionDownloader {
       .pg("transactions")
       .where({ hash: hash })
       .update({
-        internal_transaction_status: status,
+        status: status,
         locked_by: null,
         locked_at: null
       });

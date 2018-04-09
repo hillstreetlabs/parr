@@ -105,4 +105,3 @@ export default class BlockIndexer {
     return unlocked;
   }
 }
-

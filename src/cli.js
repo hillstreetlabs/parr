@@ -18,7 +18,6 @@ import BlockDownloader from "./lib/BlockDownloader";
 import TransactionDownloader from "./lib/TransactionDownloader";
 import InternalTransactionDownloader from "./lib/InternalTransactionDownloader";
 import implementsAbi from "./util/implementsAbi";
-import withTimeout from "./util/withTimeout";
 
 program
   .command("watch")

@@ -37,8 +37,6 @@ exports.up = async (knex, Promise) => {
     table.timestamp("indexed_at");
     table.string("to_address");
     table.string("from_address");
-    table.string("internal_transaction_status");
-    table.index("internal_transaction_status");
     table.timestamps(true, true);
   });
 
