@@ -208,19 +208,4 @@ program
     );
   });
 
-program
-  .command("test")
-  .description("Check address for ERC standards")
-  .action(async options => {
-    const db = await initDb();
-    console.log(
-      await withTimeout(
-        db.web3.getTransactionReceipt(
-          "0xfc218cad4a4231559b89b62a66b66017de7b1c06679c2efafd1b85aaeeb3916b"
-        ),
-        5000
-      )
-    );
-  });
-
 program.parse(process.argv);

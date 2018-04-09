@@ -21,6 +21,7 @@ exports.up = async (knex, Promise) => {
   await knex.schema.createTable("transactions", function(table) {
     table.increments();
     table.string("status");
+    table.index("status");
     table.jsonb("data");
     table.jsonb("receipt");
     table.string("hash");
@@ -36,6 +37,8 @@ exports.up = async (knex, Promise) => {
     table.timestamp("indexed_at");
     table.string("to_address");
     table.string("from_address");
+    table.string("internal_transaction_status");
+    table.index("internal_transaction_status");
     table.timestamps(true, true);
   });
 
@@ -60,6 +63,21 @@ exports.up = async (knex, Promise) => {
     table.increments();
     table.string("status");
     table.jsonb("data");
+    table.string("block_hash");
+    table.index("block_hash");
+    table.string("transaction_hash");
+    table.index("transaction_hash");
+    table.string("from_address");
+    table.string("to_address");
+    table.string("downloaded_by");
+    table.timestamp("downloaded_at");
+    table.string("locked_by");
+    table.timestamp("locked_at");
+    table.string("indexed_by");
+    table.timestamp("indexed_at");
+    table.integer("internal_transaction_index");
+    table.index("internal_transaction_index");
+    table.unique(["transaction_hash", "internal_transaction_index"]);
     table.timestamps(true, true);
   });
 

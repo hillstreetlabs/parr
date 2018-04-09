@@ -81,26 +81,19 @@ export default class InternalTransactionDownloader {
       return this.updateTransactionStatusTo(transaction.hash, "ready");
     }
 
-    await Promise.all(
-      response.result.map((internalTransaction, index) => {
-        return this.importInternalTransaction(
+    const internalTransactions = response.result.map(
+      (internalTransaction, index) => {
+        return this.internalTransactionJson(
           internalTransaction,
           transaction,
           index
         );
-      })
+      }
     );
 
-    return this.updateTransactionStatusTo(transaction.hash, "downloaded");
-  }
+    await this.db.pg("internal_transactions").insert(internalTransactions);
 
-  async importInternalTransaction(internalTransaction, transaction, index) {
-    await this.db
-      .pg("internal_transactions")
-      .insert(
-        this.internalTransactionJson(internalTransaction, transaction, index)
-      );
-    console.log(`Downloaded internal transaction ${transaction.hash}:${index}`);
+    return this.updateTransactionStatusTo(transaction.hash, "downloaded");
   }
 
   async updateTransactionStatusTo(hash, status) {
