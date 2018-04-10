@@ -32,7 +32,7 @@ export default class TransactionIndexer {
       );
       this.run();
     } else {
-      console.log(`No indexable transactions found, waiting ${DELAY}ms`);
+      console.log(`No downloaded transactions found, waiting ${DELAY}ms`);
       this.timeout = setTimeout(() => this.run(), DELAY);
     }
   }
@@ -61,7 +61,7 @@ export default class TransactionIndexer {
       const transactions = await trx
         .select()
         .from("transactions")
-        .where({ status: "indexable", locked_by: null })
+        .where({ status: "downloaded", locked_by: null })
         .limit(BATCH_SIZE);
       const hashes = await trx
         .select()
@@ -90,16 +90,6 @@ export default class TransactionIndexer {
           )
         ),
         this.db.elasticsearch.bulkIndex(
-          "internal-transactions",
-          "internal-transaction",
-          transaction.internalTransactions.map(internalTransaction =>
-            Object.assign(internalTransaction, {
-              block: transaction.block,
-              transaction: omit(transaction, ["block", "internalTransactions"])
-            })
-          )
-        ),
-        this.db.elasticsearch.bulkIndex(
           "transactions",
           "transaction",
           transactionJson(transaction)
@@ -110,14 +100,6 @@ export default class TransactionIndexer {
       await Promise.all([
         this.db
           .pg("logs")
-          .where({ transaction_hash: transaction.hash })
-          .update({
-            status: "indexed",
-            indexed_by: this.pid,
-            indexed_at: this.db.pg.fn.now()
-          }),
-        this.db
-          .pg("internal_transactions")
           .where({ transaction_hash: transaction.hash })
           .update({
             status: "indexed",
@@ -138,8 +120,6 @@ export default class TransactionIndexer {
       pgTimer.stop();
       this.indexedTransactions++;
       this.indexedLogs += transaction.logs.length;
-      this.indexedInternalTransactions +=
-        transaction.internalTransactions.length;
       this.prepareBlockForIndexing(transaction.block);
     } catch (error) {
       console.log(`Failed to index transaction ${transaction.hash}`, error);
@@ -156,10 +136,6 @@ export default class TransactionIndexer {
 
     transaction.logs = await this.db
       .pg("logs")
-      .where({ transaction_hash: transaction.hash });
-
-    transaction.internalTransactions = await this.db
-      .pg("internal_transactions")
       .where({ transaction_hash: transaction.hash });
 
     timer.stop();
