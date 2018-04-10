@@ -15,10 +15,10 @@ const DELAY = 5000;
 export default class TransactionDownloader {
   @observable transactionCount = 0;
   @observable addressCount = 0;
+  @observable errorCount = 0;
   contractCount = 0;
   erc20Count = 0;
   erc721Count = 0;
-  errorCount = 0;
 
   constructor(db) {
     this.db = db;
