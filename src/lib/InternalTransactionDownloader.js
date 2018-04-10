@@ -45,7 +45,7 @@ export default class InternalTransactionDownloader {
       const transactions = await trx
         .select()
         .from("transactions")
-        .where({ status: "downloaded" })
+        .where({ status: "downloaded", locked_by: null })
         .limit(BATCH_SIZE);
       const hashes = await trx
         .select()
