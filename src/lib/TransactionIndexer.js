@@ -1,29 +1,12 @@
 import uuid from "uuid";
 import omit from "lodash/omit";
 import { logJson, transactionJson } from "../util/esJson";
+import createTimer from "../util/createTimer";
 import { observable, autorun } from "mobx";
 import { Line, LineBuffer, Clear } from "clui";
 
 const BATCH_SIZE = 50;
 const DELAY = 5000;
-
-function createTimer() {
-  let times = {};
-  return {
-    time(key) {
-      if (times[key] === undefined) times[key] = 0;
-      const start = new Date().getTime();
-      return {
-        stop: () => {
-          times[key] += new Date().getTime() - start;
-        }
-      };
-    },
-    get() {
-      return times;
-    }
-  };
-}
 
 export default class TransactionIndexer {
   @observable indexedTransactions = 0;
@@ -36,40 +19,7 @@ export default class TransactionIndexer {
     this.timer = createTimer();
     this.pid = `TransactionIndexer@${uuid.v4()}`;
 
-    this.cleanup = autorun(() => {
-      Clear();
-      const outputBuffer = new LineBuffer({
-        x: 0,
-        y: 0,
-        width: "console",
-        height: "console"
-      });
-      const statHeaders = new Line(outputBuffer);
-      const statValues = new Line(outputBuffer);
-      const times = this.timer.get();
-      Object.keys(times).forEach(key => {
-        statHeaders.column(key, 20);
-        statValues.column(
-          Math.floor(times[key] / this.indexedTransactions) + " ms/t",
-          20
-        );
-      });
-      statHeaders.fill().output();
-      statValues.fill().output();
-      new Line(outputBuffer)
-        .column("Transactions", 20)
-        .column("Logs", 20)
-        .column("Int. Transactions", 20)
-        .fill()
-        .output();
-      new Line(outputBuffer)
-        .column(`${this.indexedTransactions}`, 20)
-        .column(`${this.indexedLogs}`, 20)
-        .column(`${this.indexedInternalTransactions}`, 20)
-        .fill()
-        .output();
-      outputBuffer.output();
-    });
+    this.stopPrintingStats = autorun(() => this.printStats());
   }
 
   async run() {
@@ -101,7 +51,7 @@ export default class TransactionIndexer {
         locked_at: null
       });
     console.log(`Unlocked ${unlocked.length} transactions`);
-    this.cleanup();
+    this.stopPrintingStats();
     process.exit();
   }
 
@@ -247,5 +197,40 @@ export default class TransactionIndexer {
       .update({ locked_by: null, locked_at: null });
     timer.stop();
     return unlocked;
+  }
+
+  printStats() {
+    Clear();
+    const outputBuffer = new LineBuffer({
+      x: 0,
+      y: 0,
+      width: "console",
+      height: "console"
+    });
+    const statHeaders = new Line(outputBuffer);
+    const statValues = new Line(outputBuffer);
+    const times = this.timer.get();
+    Object.keys(times).forEach(key => {
+      statHeaders.column(key, 20);
+      statValues.column(
+        Math.floor(times[key] / this.indexedTransactions) + " ms/t",
+        20
+      );
+    });
+    statHeaders.fill().output();
+    statValues.fill().output();
+    new Line(outputBuffer)
+      .column("Transactions", 20)
+      .column("Logs", 20)
+      .column("Int. Transactions", 20)
+      .fill()
+      .output();
+    new Line(outputBuffer)
+      .column(`${this.indexedTransactions}`, 20)
+      .column(`${this.indexedLogs}`, 20)
+      .column(`${this.indexedInternalTransactions}`, 20)
+      .fill()
+      .output();
+    outputBuffer.output();
   }
 }
