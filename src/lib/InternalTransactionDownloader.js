@@ -134,8 +134,6 @@ export default class InternalTransactionDownloader {
       from_address: internalTransaction.from,
       to_address: internalTransaction.to,
       status: "downloaded",
-      locked_by: null,
-      locked_at: null,
       downloaded_by: this.pid,
       downloaded_at: this.db.pg.fn.now(),
       data: {
