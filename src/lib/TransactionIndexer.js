@@ -198,13 +198,11 @@ export default class TransactionIndexer {
     new Line(outputBuffer)
       .column("Transactions", 20)
       .column("Logs", 20)
-      .column("Int. Transactions", 20)
       .fill()
       .output();
     new Line(outputBuffer)
       .column(`${this.indexedTransactions}`, 20)
       .column(`${this.indexedLogs}`, 20)
-      .column(`${this.indexedInternalTransactions}`, 20)
       .fill()
       .output();
     outputBuffer.output();
