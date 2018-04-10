@@ -22,7 +22,6 @@ export default class TransactionDownloader {
 
   constructor(db) {
     this.db = db;
-    this.timer;
     this.pid = `TransactionDownloader@${uuid.v4()}`;
     this.timer = createTimer();
 
@@ -39,7 +38,7 @@ export default class TransactionDownloader {
       this.run();
     } else {
       console.log(`No imported transactions found, waiting ${DELAY}ms`);
-      this.timer = setTimeout(() => this.run(), DELAY);
+      this.timeout = setTimeout(() => this.run(), DELAY);
     }
   }
 
@@ -47,7 +46,7 @@ export default class TransactionDownloader {
     this.isExiting = true;
 
     console.log("Exiting...");
-    clearTimeout(this.timer);
+    clearTimeout(this.timeout);
     const unlocked = await this.db.pg
       .select()
       .from("transactions")
