@@ -151,7 +151,7 @@ export default class TransactionIndexer {
         name: "to_transaction",
         parent: `address:${transaction.to_address}`
       };
-      transaction.routing = `address:${transaction.to.address}`;
+      transaction.routing = `address:${transaction.to_address}`;
       return transactionJson(transaction);
     });
     const indexed = await this.db.elasticsearch.bulkIndex(
@@ -168,12 +168,10 @@ export default class TransactionIndexer {
       .pg("addresses")
       .where({ address: transaction.from_address })
       .first();
-    if (!transaction.from) console.log(transaction);
     transaction.to = await this.db
       .pg("addresses")
       .where({ address: transaction.to_address })
       .first();
-    if (!transaction.to) console.log(transaction);
     transaction.block = await this.db
       .pg("blocks")
       .where({ hash: transaction.block_hash })
