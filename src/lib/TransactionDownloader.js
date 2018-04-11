@@ -25,7 +25,7 @@ export default class TransactionDownloader {
     this.pid = `TransactionDownloader@${uuid.v4()}`;
     this.timer = createTimer();
 
-    this.stopPrintingStats = autorun(() => this.printStats());
+    this.stopPrintingStats = () => {}; //autorun(() => this.printStats());
     this.startedAt = new Date().getTime();
   }
 
@@ -35,7 +35,7 @@ export default class TransactionDownloader {
     let transactionHashes = await this.getTransactionHashes();
     if (transactionHashes.length > 0) {
       await this.importTransactions(transactionHashes);
-      this.run();
+      // this.run();
     } else {
       console.log(`No imported transactions found, waiting ${DELAY}ms`);
       this.timeout = setTimeout(() => this.run(), DELAY);
@@ -98,6 +98,8 @@ export default class TransactionDownloader {
         this.db.web3.getTransactionReceipt(transactionHash),
         5000
       );
+
+      console.log(receipt);
       timer.stop();
       timer = this.timer.time("postgres");
       const transaction = await upsert(
@@ -116,6 +118,7 @@ export default class TransactionDownloader {
       this.transactionCount++;
     } catch (err) {
       this.errorCount++;
+      console.log(err);
       // Unlock transaction
       return this.unlockTransaction(transactionHash);
     }
