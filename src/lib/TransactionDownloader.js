@@ -16,7 +16,7 @@ export default class TransactionDownloader {
   @observable transactionCount = 0;
   @observable addressCount = 0;
   @observable errorCount = 0;
-  logCount = 0;
+  @observable logCount = 0;
   errors = [];
   contractCount = 0;
   erc20Count = 0;
@@ -99,6 +99,7 @@ export default class TransactionDownloader {
         this.db.web3.getTransactionReceipt(transaction.hash),
         5000
       );
+
       timer.stop();
       timer = this.timer.time("postgres");
       await Promise.all([
@@ -119,6 +120,7 @@ export default class TransactionDownloader {
       this.transactionCount++;
     } catch (err) {
       this.errorCount++;
+      this.errors.push(err);
       return this.unlockTransaction(transaction);
     }
   }
@@ -180,8 +182,7 @@ export default class TransactionDownloader {
       return saved;
     } catch (e) {
       if (e.code == "23505") return true; // Silence duplicate key error
-      this.errorCount++;
-      this.errors.push(e);
+      throw e;
     }
   }
 
