@@ -121,7 +121,6 @@ export default class BlockDownloader {
       from_address: transaction.from,
       to_address: transaction.to,
       data: {
-        blockHash: transaction.blockHash,
         blockNumber: transaction.blockNumber.toNumber(),
         from: transaction.from,
         gas: transaction.gas.toString(10),
@@ -148,8 +147,6 @@ export default class BlockDownloader {
         difficulty: block.difficulty.toString(10),
         gasLimit: block.gasLimit.toString(10),
         gasUsed: block.gasUsed.toString(10),
-        hash: block.hash,
-        number: block.number.toString(),
         miner: block.miner,
         nonce: block.nonce.toString(10),
         parentHash: block.parentHash,

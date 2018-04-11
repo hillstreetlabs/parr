@@ -64,7 +64,6 @@ export default class AddressIndexer {
     );
     const indexed = await this.db.elasticsearch.bulkIndex(
       "addresses",
-      "address",
       addressesJson
     );
     const addressStrings = addresses.map(address => address.address);

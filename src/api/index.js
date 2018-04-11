@@ -6,8 +6,7 @@ export default ({ config, db }) => {
 
   api.post("/blocks", async (req, res) => {
     const response = await db.elasticsearch.client.search({
-      index: "parr",
-      type: "blocks",
+      index: "parr-blocks-transactions",
       body: req.params
     });
     res.json({ response });
@@ -15,17 +14,8 @@ export default ({ config, db }) => {
 
   api.post("/addresses", async (req, res) => {
     const response = await db.elasticsearch.client.search({
-      index: "transactions",
-      body: {
-        size: 0,
-        aggregations: {
-          my_agg: {
-            terms: {
-              field: "block.miner.keyword"
-            }
-          }
-        }
-      }
+      index: "parr-addresses",
+      body: req.params
     });
     res.json({ response });
   });

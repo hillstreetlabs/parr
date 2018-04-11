@@ -10,8 +10,6 @@ const DELAY = 5000;
 
 export default class TransactionIndexer {
   @observable indexedTransactions = 0;
-  @observable indexedLogs = 0;
-  @observable indexedInternalTransactions = 0;
 
   constructor(db) {
     this.db = db;
@@ -24,12 +22,9 @@ export default class TransactionIndexer {
 
   async run() {
     if (this.isExiting) return;
-
     let transactions = await this.getTransactions();
     if (transactions.length > 0) {
-      await Promise.all(
-        transactions.map(transaction => this.indexTransaction(transaction))
-      );
+      await this.indexTransactions(transactions);
       this.run();
     } else {
       console.log(`No downloaded transactions found, waiting ${DELAY}ms`);
@@ -41,6 +36,12 @@ export default class TransactionIndexer {
     this.isExiting = true;
     console.log("Exiting...");
     clearTimeout(this.timeout);
+    await this.unlockTransactions();
+    this.stopPrintingStats();
+    process.exit();
+  }
+
+  async unlockTransactions() {
     const unlocked = await this.db.pg
       .select()
       .from("transactions")
@@ -51,8 +52,6 @@ export default class TransactionIndexer {
         locked_at: null
       });
     console.log(`Unlocked ${unlocked.length} transactions`);
-    this.stopPrintingStats();
-    process.exit();
   }
 
   getTransactions() {
@@ -77,102 +76,61 @@ export default class TransactionIndexer {
     });
   }
 
-  async indexTransaction(transaction) {
+  async indexTransactions(transactions) {
     try {
-      transaction = await this.fetchTransactionData(transaction);
-      const esTimer = this.timer.time("indexing");
-      await Promise.all([
-        this.db.elasticsearch.bulkIndex(
-          "logs",
-          "log",
-          transaction.logs.map(log =>
-            Object.assign(log, { block: transaction.block })
-          )
-        ),
-        this.db.elasticsearch.bulkIndex(
-          "transactions",
-          "transaction",
-          transactionJson(transaction)
-        )
-      ]);
-      esTimer.stop();
-      const pgTimer = this.timer.time("unlocking");
-      await Promise.all([
-        this.db
-          .pg("logs")
-          .where({ transaction_hash: transaction.hash })
-          .update({
-            status: "indexed",
-            indexed_by: this.pid,
-            indexed_at: this.db.pg.fn.now()
-          }),
-        this.db
-          .pg("transactions")
-          .where({ hash: transaction.hash })
-          .update({
-            status: "indexed",
-            locked_by: null,
-            locked_at: null,
-            indexed_by: this.pid,
-            indexed_at: this.db.pg.fn.now()
-          })
-      ]);
-      pgTimer.stop();
-      this.indexedTransactions++;
-      this.indexedLogs += transaction.logs.length;
-      this.prepareBlockForIndexing(transaction.block);
-    } catch (error) {
-      console.log(`Failed to index transaction ${transaction.hash}`, error);
-      return this.unlockTransaction(transaction.hash);
+      const fetchTimer = this.timer.time("fetching");
+      const transactionsJson = await Promise.all(
+        transactions.map(transaction => this.fetchTransactionData(transaction))
+      );
+      fetchTimer.stop();
+      const indexTimer = this.timer.time("indexing");
+      const indexed = await this.db.elasticsearch.bulkIndex(
+        "parr-blocks-transactions",
+        transactionsJson
+      );
+      indexTimer.stop();
+      if (indexed.errors) throw JSON.stringify(indexed);
+      const updateTimer = this.timer.time("updating");
+      const updated = await this.db
+        .pg("transactions")
+        .whereIn("hash", transactions.map(transaction => transaction.hash))
+        .returning("hash")
+        .update({
+          status: "indexed",
+          locked_by: null,
+          locked_at: null,
+          indexed_by: this.pid,
+          indexed_at: this.db.pg.fn.now()
+        });
+      updateTimer.stop();
+      console.log(
+        `Indexed ${updated.length} transactions: ${updated.join(", ")}`
+      );
+    } catch (err) {
+      console.log(`Failed to index transactions`, err);
+      return this.unlockTransactions();
     }
   }
 
   async fetchTransactionData(transaction) {
     const timer = this.timer.time("fetchTransactionData");
+    transaction.from = await this.db
+      .pg("addresses")
+      .where({ address: transaction.from_address })
+      .first();
+    transaction.to = await this.db
+      .pg("addresses")
+      .where({ address: transaction.to_address })
+      .first();
     transaction.block = await this.db
       .pg("blocks")
-      .where({ hash: transaction.data.blockHash })
+      .where({ hash: transaction.block_hash })
       .first();
-
     transaction.logs = await this.db
       .pg("logs")
       .where({ transaction_hash: transaction.hash });
-
     timer.stop();
-    return transaction;
-  }
-
-  async prepareBlockForIndexing(block) {
-    const timer = this.timer.time("prepareBlockForIndexing");
-    const transactionCountResult = await this.db
-      .pg("transactions")
-      .where({ status: "indexed", block_hash: block.data.hash })
-      .count();
-    const transactionCount = parseInt(transactionCountResult[0].count);
-
-    if (block.data.transactionCount !== transactionCount) {
-      timer.stop();
-      return true;
-    }
-
-    await this.db.pg
-      .from("blocks")
-      .where({ hash: block.hash })
-      .update({
-        status: "indexable"
-      });
-    timer.stop();
-  }
-
-  async unlockTransaction(hash) {
-    const timer = this.timer.time("unlocking");
-    const unlocked = await this.db
-      .pg("transactions")
-      .where("hash", hash)
-      .returning("hash")
-      .update({ locked_by: null, locked_at: null });
-    timer.stop();
-    return unlocked;
+    return transactionJson(transaction);
   }
 
   printStats() {

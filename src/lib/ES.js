@@ -4,18 +4,13 @@ export const INDICES = [
   {
     name: "parr-blocks-transactions",
     mappings: {
-      document: {
+      _doc: {
         properties: {
-          join_field: {
-            type: "join",
-            relations: { block: "transaction" }
-          },
-          type: {
-            type: "keyword"
-          },
-          hash: {
-            type: "keyword"
-          }
+          join_field: { type: "join", relations: { block: "transaction" } },
+          type: { type: "keyword" },
+          hash: { type: "keyword" },
+          to: { type: "object" },
+          from: { type: "object" }
         }
       }
     }
@@ -23,15 +18,13 @@ export const INDICES = [
   {
     name: "parr-addresses",
     mappings: {
-      document: {
+      _doc: {
         properties: {
           join_field: {
             type: "join",
             relations: { address: ["toTransaction", "fromTransaction"] }
           },
-          type: {
-            type: "keyword"
-          }
+          type: { type: "keyword" }
         }
       }
     }
@@ -72,7 +65,7 @@ export default class ES {
     console.log(`There are ${response.count} documents in the ${index} index`);
   }
 
-  async bulkIndex(index, type, data) {
+  async bulkIndex(index, data, params = {}) {
     if (!await this.client.indices.exists({ index: index })) {
       throw `ES index ${index} does not exist`;
     }
@@ -88,8 +81,9 @@ export default class ES {
       bulkBody.push({
         update: {
           _index: index,
-          _type: type,
-          _id: item.id
+          _type: "_doc",
+          _id: item.id,
+          _routing: item.routing || undefined
         }
       });
 

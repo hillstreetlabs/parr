@@ -144,13 +144,19 @@ export default class TransactionDownloader {
 
   async importAddress(address) {
     const bytecode = await withTimeout(this.db.web3.getCode(address), 5000);
-    const saved = await this.db
-      .pg("addresses")
-      .insert(this.addressJson(address, bytecode));
-    console.log(
-      `Downloaded address ${address}${bytecode != "0x" ? " (✓ Contract)" : ""}`
-    );
-    return saved;
+    try {
+      const saved = await this.db
+        .pg("addresses")
+        .insert(this.addressJson(address, bytecode));
+      console.log(
+        `Downloaded address ${address}${
+          bytecode != "0x" ? " (✓ Contract)" : ""
+        }`
+      );
+      return saved;
+    } catch (err) {
+      console.log(`Import address error: ${address}`);
+    }
   }
 
   addressJson(address, bytecode) {
