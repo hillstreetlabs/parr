@@ -53,7 +53,7 @@ export default class BlockIndexer {
     try {
       const blocksJson = blocks.map(block => blockJson(block));
       const indexed = await this.db.elasticsearch.bulkIndex(
-        "parr-blocks-transactions",
+        "parr_blocks_transactions",
         blocksJson
       );
       if (indexed.errors) throw "Failed to index blocks";

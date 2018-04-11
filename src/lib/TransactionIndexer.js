@@ -79,17 +79,15 @@ export default class TransactionIndexer {
   async indexTransactions(transactions) {
     try {
       const fetchTimer = this.timer.time("fetching");
-      const transactionsJson = await Promise.all(
+      const transactionsData = await Promise.all(
         transactions.map(transaction => this.fetchTransactionData(transaction))
       );
       fetchTimer.stop();
       const indexTimer = this.timer.time("indexing");
-      const indexed = await this.db.elasticsearch.bulkIndex(
-        "parr-blocks-transactions",
-        transactionsJson
-      );
+      await this.indexAsTransactions(transactionsData);
+      await this.indexAsFromTransactions(transactionsData);
+      await this.indexAsToTransactions(transactionsData);
       indexTimer.stop();
-      if (indexed.errors) throw JSON.stringify(indexed);
       const updateTimer = this.timer.time("updating");
       const updated = await this.db
         .pg("transactions")
@@ -103,11 +101,65 @@ export default class TransactionIndexer {
           indexed_at: this.db.pg.fn.now()
         });
       updateTimer.stop();
-      console.log(`Indexed ${updated.length} transactions`);
+      this.indexedTransactions += updated.length;
     } catch (err) {
       console.log(`Failed to index transactions`, err);
       return this.unlockTransactions();
     }
+  }
+
+  async indexAsTransactions(transactions) {
+    const transactionsJson = transactions.map(transaction => {
+      transaction.type = "transaction";
+      transaction.join_field = {
+        name: "transaction",
+        parent: `block:${transaction.block_hash}`
+      };
+      transaction.routing = transaction.block_hash;
+      return transactionJson(transaction);
+    });
+    const indexed = await this.db.elasticsearch.bulkIndex(
+      "parr_blocks_transactions",
+      transactionsJson
+    );
+    if (indexed.errors) throw JSON.stringify(indexed);
+    return indexed;
+  }
+
+  async indexAsFromTransactions(transactions) {
+    const transactionsJson = transactions.map(transaction => {
+      transaction.type = "from_transaction";
+      transaction.join_field = {
+        name: "from_transaction",
+        parent: `address:${transaction.from.address}`
+      };
+      transaction.routing = transaction.from.address;
+      return transactionJson(transaction);
+    });
+    const indexed = await this.db.elasticsearch.bulkIndex(
+      "parr_addresses",
+      transactionsJson
+    );
+    if (indexed.errors) throw JSON.stringify(indexed);
+    return indexed;
+  }
+
+  async indexAsToTransactions(transactions) {
+    const transactionsJson = transactions.map(transaction => {
+      transaction.type = "to_transaction";
+      transaction.join_field = {
+        name: "to_transaction",
+        parent: `address:${transaction.to.address}`
+      };
+      transaction.routing = transaction.to.address;
+      return transactionJson(transaction);
+    });
+    const indexed = await this.db.elasticsearch.bulkIndex(
+      "parr_addresses",
+      transactionsJson
+    );
+    if (indexed.errors) throw JSON.stringify(indexed);
+    return indexed;
   }
 
   async fetchTransactionData(transaction) {
@@ -128,7 +180,7 @@ export default class TransactionIndexer {
       .pg("logs")
       .where({ transaction_hash: transaction.hash });
     timer.stop();
-    return transactionJson(transaction);
+    return transaction;
   }
 
   printStats() {

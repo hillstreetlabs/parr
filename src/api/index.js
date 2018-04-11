@@ -6,7 +6,7 @@ export default ({ config, db }) => {
 
   api.post("/blocks", async (req, res) => {
     const response = await db.elasticsearch.client.search({
-      index: "parr-blocks-transactions",
+      index: "parr_blocks_transactions",
       body: req.body
     });
     res.json({ response });
@@ -14,7 +14,7 @@ export default ({ config, db }) => {
 
   api.post("/addresses", async (req, res) => {
     const response = await db.elasticsearch.client.search({
-      index: "parr-addresses",
+      index: "parr_addresses",
       body: req.body
     });
     res.json({ response });

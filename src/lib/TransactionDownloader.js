@@ -31,10 +31,9 @@ export default class TransactionDownloader {
 
   async run() {
     if (this.isExiting) return;
-
-    let transactionHashes = await this.getTransactionHashes();
-    if (transactionHashes.length > 0) {
-      await this.importTransactions(transactionHashes);
+    let transactions = await this.getTransactions();
+    if (transactions.length > 0) {
+      await this.importTransactions(transactions);
       this.run();
     } else {
       console.log(`No imported transactions found, waiting ${DELAY}ms`);
@@ -60,11 +59,11 @@ export default class TransactionDownloader {
     process.exit();
   }
 
-  async getTransactionHashes() {
+  async getTransactions() {
     const timer = this.timer.time("postgres");
     const result = await this.db.pg.transaction(async trx => {
       const transactions = await trx
-        .select("id")
+        .select()
         .from("transactions")
         .where({ status: "imported", locked_by: null })
         .limit(BATCH_SIZE);
@@ -77,71 +76,72 @@ export default class TransactionDownloader {
           locked_by: this.pid,
           locked_at: this.db.pg.fn.now()
         });
-      return hashes;
+      return transactions;
     });
     timer.stop();
     return result;
   }
 
-  async importTransactions(transactionHashes) {
+  async importTransactions(transactions) {
     await Promise.all(
-      transactionHashes.map(hash => {
-        return this.importTransaction(hash);
+      transactions.map(transaction => {
+        return this.importTransaction(transaction);
       })
     );
   }
 
-  async importTransaction(transactionHash) {
+  async importTransaction(transaction) {
     try {
       let timer = this.timer.time("download");
       const receipt = await withTimeout(
-        this.db.web3.getTransactionReceipt(transactionHash),
+        this.db.web3.getTransactionReceipt(transaction.hash),
         5000
       );
       timer.stop();
       timer = this.timer.time("postgres");
-      const transaction = await upsert(
+      const savedTransaction = await upsert(
         this.db.pg,
         "transactions",
-        this.transactionJson(receipt),
+        this.transactionJson(transaction, receipt),
         "(hash)"
       );
       await Promise.all([
-        this.importAddress(receipt.to),
-        this.importAddress(receipt.from)
+        this.importAddress(savedTransaction.to_address),
+        this.importAddress(savedTransaction.from_address)
       ]);
-      const logs = await this.importLogs(receipt);
+      const logs = await this.importLogs(
+        savedTransaction.to_address,
+        receipt.logs
+      );
       timer.stop();
-
       this.transactionCount++;
     } catch (err) {
       this.errorCount++;
-      // Unlock transaction
-      return this.unlockTransaction(transactionHash);
+      return this.unlockTransaction(transaction);
     }
   }
 
-  async unlockTransaction(hash) {
+  async unlockTransaction(transaction) {
     const timer = this.timer.time("postgres");
     const unlocked = await this.db
       .pg("transactions")
-      .where("hash", hash)
+      .where("hash", transaction.hash)
       .returning("hash")
       .update({ locked_by: null, locked_at: null });
     timer.stop();
     return unlocked;
   }
 
-  async importLogs(receipt) {
+  async importLogs(contractAddress, logs) {
     let decoded;
     const contract = await this.db
       .pg("addresses")
-      .where("address", receipt.to)
+      .where("address", contractAddress)
       .first();
     if (contract && contract.abi) {
       try {
         const decoder = Eth.abi.logDecoder(contract.abi);
-        decoded = decoder(receipt.logs);
+        decoded = decoder(logs);
       } catch (error) {
         decoded = [];
       }
@@ -149,17 +149,17 @@ export default class TransactionDownloader {
       decoded = [];
     }
     return Promise.all(
-      receipt.logs.map((log, index) => {
-        return this.importLog(log, decoded[index], receipt.blockHash);
+      logs.map((log, index) => {
+        return this.importLog(log, decoded[index]);
       })
     );
   }
 
-  async importLog(log, decoded, blockHash) {
+  async importLog(log, decoded) {
     const saved = await upsert(
       this.db.pg,
       "logs",
-      this.logJson(log, decoded, blockHash),
+      this.logJson(log, decoded),
       "(transaction_hash, log_index)"
     );
     return saved;
@@ -192,9 +192,9 @@ export default class TransactionDownloader {
     };
   }
 
-  logJson(log, decoded = {}, blockHash) {
+  logJson(log, decoded = {}) {
     return {
-      block_hash: blockHash,
+      block_hash: log.blockHash,
       transaction_hash: log.transactionHash,
       log_index: log.logIndex.toNumber(),
       status: "downloaded",
@@ -202,33 +202,27 @@ export default class TransactionDownloader {
       data: {
         address: log.address,
         data: log.data,
-        blockHash: log.blockHash,
-        blockNumber: log.blockNumber.toString(10),
+        blockNumber: log.blockNumber.toNumber(),
         removed: log.removed,
-        transactionIndex: log.transactionIndex.toString(10)
+        transactionIndex: log.transactionIndex.toNumber()
       }
     };
   }
 
-  transactionJson(receipt) {
+  transactionJson(transaction, receipt) {
     return {
-      hash: receipt.transactionHash,
+      hash: transaction.hash,
       status: "downloaded",
       locked_by: null,
       locked_at: null,
       downloaded_by: this.pid,
       downloaded_at: this.db.pg.fn.now(),
+      to_address: transaction.to_address || receipt.contractAddress,
       receipt: {
-        blockHash: receipt.blockHash,
-        blockNumber: receipt.blockNumber.toNumber(),
         contractAddress: receipt.contractAddress,
         cumulativeGasUsed: receipt.cumulativeGasUsed.toString(10),
-        from: receipt.from,
         gasUsed: receipt.gasUsed.toString(10),
-        to: receipt.to,
-        logsBloom: receipt.logsBloom,
-        status: receipt.status,
-        transactionIndex: receipt.transactionIndex
+        status: receipt.status
       }
     };
   }

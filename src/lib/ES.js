@@ -2,7 +2,7 @@ import Elasticsearch from "elasticsearch";
 
 export const INDICES = [
   {
-    name: "parr-blocks-transactions",
+    name: "parr_blocks_transactions",
     mappings: {
       _doc: {
         properties: {
@@ -10,21 +10,23 @@ export const INDICES = [
           type: { type: "keyword" },
           hash: { type: "keyword" },
           to: { type: "object" },
-          from: { type: "object" }
+          from: { type: "object" },
+          value: { type: "double" }
         }
       }
     }
   },
   {
-    name: "parr-addresses",
+    name: "parr_addresses",
     mappings: {
       _doc: {
         properties: {
           join_field: {
             type: "join",
-            relations: { address: ["toTransaction", "fromTransaction"] }
+            relations: { address: ["to_transaction", "from_transaction"] }
           },
-          type: { type: "keyword" }
+          type: { type: "keyword" },
+          value: { type: "double" }
         }
       }
     }

@@ -202,9 +202,19 @@ program
   .command("es:reset")
   .description("reset Elasticsearch")
   .action(async options => {
-    const { elasticsearch } = await initDb();
+    const { elasticsearch, pg } = await initDb();
     try {
       const receipt = await elasticsearch.reset();
+      await pg("blocks")
+        .where("status", "indexed")
+        .update("status", "downloaded");
+      await pg("transactions")
+        .where("status", "indexed")
+        .update("status", "downloaded");
+      await pg("addresses")
+        .where("status", "indexed")
+        .update("status", "downloaded");
+      pg.destroy();
       console.log(`Reset elasticsearch index`, receipt);
     } catch (err) {
       console.log(`Error`, err);

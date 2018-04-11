@@ -17,7 +17,7 @@ export const logJson = log => {
 export const addressJson = address => {
   return {
     address: address.address,
-    is_contract: address.isContract,
+    is_contract: address.is_contract,
     is_ERC20: address.is_erc20,
     is_ERC721: address.is_erc721,
     abi: address.abi,
@@ -26,13 +26,11 @@ export const addressJson = address => {
 };
 
 export const transactionJson = transaction => {
+  const type = transaction.type || "transaction";
   return {
-    type: "transaction",
-    join_field: {
-      name: "transaction",
-      parent: transaction.block_hash
-    },
-    routing: transaction.block_hash,
+    type: type,
+    routing: transaction.routing,
+    join_field: transaction.join_field,
     contract_address: transaction.receipt.contractAddress,
     cumulative_gas_used: parseInt(transaction.receipt.cumulativeGasUsed),
     from: transaction.from
@@ -42,7 +40,7 @@ export const transactionJson = transaction => {
     gas_price: parseFloat(transaction.data.gasPrice),
     gas_used: parseInt(transaction.receipt.gasUsed),
     hash: transaction.hash,
-    id: transaction.hash,
+    id: `${type}:${transaction.hash}`,
     internal_transactions: (transaction.internalTransactions || []).map(
       internalTransaction => internalTransactionJson(internalTransaction)
     ),
@@ -65,7 +63,7 @@ export const blockJson = block => {
     gas_limit: block.data.gasLimit,
     gas_used: block.data.gasUsed,
     hash: block.data.hash,
-    id: block.hash,
+    id: `block:${block.hash}`,
     miner: block.data.miner,
     nonce: block.data.nonce,
     parent_hash: block.data.parentHash,
