@@ -1,5 +1,6 @@
 import HttpProvider from "ethjs-provider-http";
 import Eth from "ethjs-query";
+import EthRPC from "ethjs-rpc";
 import ES from "./lib/ES";
 import Etherscan from "etherscan-api";
 import Knex from "knex";
@@ -15,6 +16,14 @@ export default async () => {
     )
   );
 
+  const rpc = new EthRPC(
+    new HttpProvider(
+      `https://${process.env.INFURA_NETWORK}.infura.io/${
+        process.env.INFURA_KEY
+      }`
+    )
+  );
+
   const elasticsearch = new ES();
 
   const etherscan = Etherscan.init(process.env.ETHERSCAN_KEY);
@@ -23,5 +32,5 @@ export default async () => {
 
   console.log("Started databases");
 
-  return { web3, elasticsearch, etherscan, pg };
+  return { web3, elasticsearch, etherscan, pg, rpc };
 };
