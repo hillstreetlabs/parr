@@ -16,6 +16,8 @@ export default class TransactionDownloader {
   @observable transactionCount = 0;
   @observable addressCount = 0;
   @observable errorCount = 0;
+  @observable logCount = 0;
+  errors = [];
   contractCount = 0;
   erc20Count = 0;
   erc721Count = 0;
@@ -43,8 +45,8 @@ export default class TransactionDownloader {
 
   async exit() {
     this.isExiting = true;
-
     console.log("Exiting...");
+    console.log("Errors", this.errors);
     clearTimeout(this.timeout);
     const unlocked = await this.db.pg
       .select()
@@ -100,24 +102,25 @@ export default class TransactionDownloader {
 
       timer.stop();
       timer = this.timer.time("postgres");
-      const savedTransaction = await upsert(
+      await Promise.all([
+        this.importAddress(receipt.to || receipt.contractAddress),
+        this.importAddress(receipt.from)
+      ]);
+      const logs = await this.importLogs(
+        receipt.to || receipt.contractAddress,
+        receipt.logs
+      );
+      await upsert(
         this.db.pg,
         "transactions",
         this.transactionJson(transaction, receipt),
         "(hash)"
       );
-      await Promise.all([
-        this.importAddress(savedTransaction.to_address),
-        this.importAddress(savedTransaction.from_address)
-      ]);
-      const logs = await this.importLogs(
-        savedTransaction.to_address,
-        receipt.logs
-      );
       timer.stop();
       this.transactionCount++;
     } catch (err) {
       this.errorCount++;
+      this.errors.push(err);
       return this.unlockTransaction(transaction);
     }
   }
@@ -163,6 +166,7 @@ export default class TransactionDownloader {
       this.logJson(log, decoded),
       "(transaction_hash, log_index)"
     );
+    this.logCount++;
     return saved;
   }
 
@@ -171,15 +175,14 @@ export default class TransactionDownloader {
       const bytecode = await withTimeout(this.db.web3.getCode(address), 5000);
       const addressJson = this.addressJson(address, bytecode);
       const saved = await this.db.pg("addresses").insert(addressJson);
-
       if (addressJson.is_contract) this.contractCount++;
       if (addressJson.is_erc20) this.erc20Count++;
       if (addressJson.is_erc721) this.erc721Count++;
       this.addressCount++;
-
       return saved;
     } catch (e) {
-      // Fail silently :(
+      if (e.code == "23505") return true; // Silence duplicate key error
+      throw e;
     }
   }
 
@@ -242,9 +245,10 @@ export default class TransactionDownloader {
 
     // Speed info
     new Line(outputBuffer)
-      .column("Transactions", 17)
-      .column("Addresses", 17)
-      .column("Errors", 6)
+      .column("Transactions", 13)
+      .column("Addresses", 13)
+      .column("Logs", 13)
+      .column("Errors", 7)
       .fill()
       .output();
     new Line(outputBuffer)
@@ -252,30 +256,34 @@ export default class TransactionDownloader {
         `${this.transactionCount} (${Math.floor(
           this.transactionCount / totalSeconds
         )}/s)`,
-        17
+        13
       )
       .column(
         `${this.addressCount} (${Math.floor(
           this.addressCount / totalSeconds
         )}/s)`,
-        17
+        13
       )
-      .column(`${this.errorCount}`, 6)
+      .column(
+        `${this.logCount} (${Math.floor(this.logCount / totalSeconds)}/s)`,
+        13
+      )
+      .column(`${this.errorCount}`, 7)
       .fill()
       .output();
     new Line(outputBuffer).fill().output();
 
     // Contract info
     new Line(outputBuffer)
-      .column("Contracts", 17)
-      .column("ERC20", 17)
-      .column("ERC721", 6)
+      .column("Contracts", 13)
+      .column("ERC20", 13)
+      .column("ERC721", 13)
       .fill()
       .output();
     new Line(outputBuffer)
-      .column(`${this.contractCount}`, 17)
-      .column(`${this.erc20Count}`, 17)
-      .column(`${this.erc721Count}`, 6)
+      .column(`${this.contractCount}`, 13)
+      .column(`${this.erc20Count}`, 13)
+      .column(`${this.erc721Count}`, 13)
       .fill()
       .output();
     new Line(outputBuffer).fill().output();
@@ -286,15 +294,15 @@ export default class TransactionDownloader {
     const postgresPerc = Math.floor(100 * times.postgres / totalTime);
     const downloadPerc = Math.floor(100 * times.download / totalTime);
     new Line(outputBuffer)
-      .column("Time", 10)
-      .column("Postgres", 10)
-      .column("Download", 10)
+      .column("Time", 13)
+      .column("Postgres", 13)
+      .column("Download", 13)
       .fill()
       .output();
     new Line(outputBuffer)
-      .column(`${Math.floor(totalSeconds)}s`, 10)
-      .column(`${postgresPerc}%`, 10)
-      .column(`${downloadPerc}%`, 10)
+      .column(`${Math.floor(totalSeconds)}s`, 13)
+      .column(`${postgresPerc}%`, 13)
+      .column(`${downloadPerc}%`, 13)
       .fill()
       .output();
 
