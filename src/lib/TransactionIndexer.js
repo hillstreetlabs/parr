@@ -103,9 +103,7 @@ export default class TransactionIndexer {
           indexed_at: this.db.pg.fn.now()
         });
       updateTimer.stop();
-      console.log(
-        `Indexed ${updated.length} transactions: ${updated.join(", ")}`
-      );
+      console.log(`Indexed ${updated.length} transactions`);
     } catch (err) {
       console.log(`Failed to index transactions`, err);
       return this.unlockTransactions();
