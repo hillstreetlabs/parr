@@ -4,49 +4,45 @@ import { Router } from "express";
 export default ({ config, db }) => {
   let api = Router();
 
-  api.use("/accounts/:accountId/internal_transactions", async (req, res) => {
-    const internals = await db.etherscan.account.txlistinternal(
-      null,
-      req.params.accountId,
-      0
-    );
-    res.json({ address: req.params.accountId, internals: internals.result });
+  api.post("/blocks", async (req, res) => {
+    const response = await db.elasticsearch.client.search({
+      index: "parr",
+      type: "blocks",
+      body: req.params
+    });
+    res.json({ response });
   });
 
-  api.use("/accounts/:accountId", async (req, res) => {
-    const balance = await db.web3.getBalance(req.params.accountId);
-    res.json({ address: req.params.accountId, balance });
+  api.post("/addresses", async (req, res) => {
+    const response = await db.elasticsearch.client.search({
+      index: "transactions",
+      body: {
+        size: 0,
+        aggregations: {
+          my_agg: {
+            terms: {
+              field: "block.miner.keyword"
+            }
+          }
+        }
+      }
+    });
+    res.json({ response });
   });
 
-  api.use("/accounts", async (req, res) => {
-    const accounts = await db.web3.accounts();
-    res.json({ accounts });
-  });
-
-  api.use("/blocks/:blockId", async (req, res) => {
-    const block = await db.web3.getBlockByNumber(req.params.blockId, true);
-    res.json({ block });
-  });
-
-  api.use("/blocks", async (req, res) => {
-    const blocks = await db.pg.select().table("blocks");
-    res.json({ blocks });
-  });
-
-  api.use("/transactions/:transactionId", async (req, res) => {
-    const receipt = await db.web3.getTransactionReceipt(
-      req.params.transactionId
-    );
-    const tx = await db.web3.getTransactionByHash(req.params.transactionId);
-    const internals = await db.etherscan.account.txlistinternal(
-      req.params.transactionId
-    );
-    res.json({ transaction: tx, receipt, internals });
-  });
-
-  api.post("/search", async (req, res) => {
+  api.post("/all", async (req, res) => {
     const query = await db.elasticsearch.client.search(req.params);
     res.json({ query });
+  });
+
+  api.options("/*", (req, res) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS");
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, Content-Length, X-Requested-With"
+    );
+    res.send(200);
   });
 
   // perhaps expose some API metadata at the root

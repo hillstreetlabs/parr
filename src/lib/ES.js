@@ -1,11 +1,41 @@
 import Elasticsearch from "elasticsearch";
 
-const INDICES = [
-  "blocks",
-  "transactions",
-  "logs",
-  "addresses",
-  "internal-transactions"
+export const INDICES = [
+  {
+    name: "parr-blocks-transactions",
+    mappings: {
+      document: {
+        properties: {
+          join_field: {
+            type: "join",
+            relations: { block: "transaction" }
+          },
+          type: {
+            type: "keyword"
+          },
+          hash: {
+            type: "keyword"
+          }
+        }
+      }
+    }
+  },
+  {
+    name: "parr-addresses",
+    mappings: {
+      document: {
+        properties: {
+          join_field: {
+            type: "join",
+            relations: { address: ["toTransaction", "fromTransaction"] }
+          },
+          type: {
+            type: "keyword"
+          }
+        }
+      }
+    }
+  }
 ];
 
 export default class ES {
@@ -16,24 +46,20 @@ export default class ES {
     });
   }
 
-  indices() {
-    return this.client.cat
-      .indices({ v: true })
-      .then(console.log)
-      .catch(err => console.error(`Error connecting to the es client: ${err}`));
-  }
-
   stats() {
     return this.client.indices.stats();
   }
 
-  resetIndices() {
-    INDICES.map(async indexName => {
+  reset() {
+    INDICES.map(async index => {
       const indexExists = await this.client.indices.exists({
-        index: indexName
+        index: index.name
       });
-      if (indexExists) await this.client.indices.delete({ index: indexName });
-      this.client.indices.create({ index: indexName });
+      if (indexExists) await this.client.indices.delete({ index: index.name });
+      return this.client.indices.create({
+        index: index.name,
+        body: { mappings: index.mappings }
+      });
     });
     return true;
   }

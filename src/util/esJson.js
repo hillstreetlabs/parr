@@ -17,26 +17,23 @@ export const logJson = log => {
 export const transactionJson = transaction => {
   return {
     block: transaction.block ? blockJson(transaction.block) : {},
-    blockHash: transaction.data.blockHash,
-    blockNumber: transaction.data.blockNumber,
     contractAddress: transaction.receipt.contractAddress,
-    cumulativeGasUsed: transaction.receipt.cumulativeGasUsed,
+    cumulativeGasUsed: parseInt(transaction.receipt.cumulativeGasUsed),
     from: transaction.data.from,
-    gas: transaction.data.gas,
-    gasPrice: transaction.data.gasPrice,
-    gasUsed: transaction.receipt.gasUsed,
+    gas: parseInt(transaction.data.gas),
+    gasPrice: parseFloat(transaction.data.gasPrice),
+    gasUsed: parseInt(transaction.receipt.gasUsed),
     hash: transaction.hash,
     id: transaction.id,
     internalTransactions: (transaction.internalTransactions || []).map(
       internalTransaction => internalTransactionJson(internalTransaction)
     ),
     logs: (transaction.logs || []).map(log => logJson(log)),
-    logsBloom: transaction.receipt.logsBloom,
     nonce: transaction.data.nonce,
     status: transaction.receipt.status,
     to: transaction.data.to,
-    transactionIndex: transaction.data.transactionIndex,
-    value: transaction.data.value
+    transactionIndex: parseInt(transaction.data.transactionIndex),
+    value: parseFloat(transaction.data.value)
   };
 };
 
