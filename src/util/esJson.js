@@ -16,12 +16,14 @@ export const logJson = log => {
 
 export const addressJson = address => {
   return {
+    type: "address",
+    join_field: "address",
     address: address.address,
     is_contract: address.is_contract,
     is_ERC20: address.is_erc20,
     is_ERC721: address.is_erc721,
     abi: address.abi,
-    id: address.address
+    id: `address:${address.address}`
   };
 };
 

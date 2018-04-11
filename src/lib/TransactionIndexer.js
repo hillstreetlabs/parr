@@ -115,7 +115,7 @@ export default class TransactionIndexer {
         name: "transaction",
         parent: `block:${transaction.block_hash}`
       };
-      transaction.routing = transaction.block_hash;
+      transaction.routing = `block:${transaction.block_hash}`;
       return transactionJson(transaction);
     });
     const indexed = await this.db.elasticsearch.bulkIndex(
@@ -133,7 +133,7 @@ export default class TransactionIndexer {
         name: "from_transaction",
         parent: `address:${transaction.from.address}`
       };
-      transaction.routing = transaction.from.address;
+      transaction.routing = `address:${transaction.from.address}`;
       return transactionJson(transaction);
     });
     const indexed = await this.db.elasticsearch.bulkIndex(
@@ -151,7 +151,7 @@ export default class TransactionIndexer {
         name: "to_transaction",
         parent: `address:${transaction.to.address}`
       };
-      transaction.routing = transaction.to.address;
+      transaction.routing = `address:${transaction.to.address}`;
       return transactionJson(transaction);
     });
     const indexed = await this.db.elasticsearch.bulkIndex(
