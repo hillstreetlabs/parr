@@ -5,7 +5,7 @@ import createTimer from "../util/createTimer";
 import { observable, autorun } from "mobx";
 import { Line, LineBuffer, Clear } from "clui";
 
-const BATCH_SIZE = 50;
+const BATCH_SIZE = 200;
 const DELAY = 5000;
 
 export default class TransactionIndexer {
@@ -205,12 +205,10 @@ export default class TransactionIndexer {
     statValues.fill().output();
     new Line(outputBuffer)
       .column("Transactions", 20)
-      .column("Logs", 20)
       .fill()
       .output();
     new Line(outputBuffer)
       .column(`${this.indexedTransactions}`, 20)
-      .column(`${this.indexedLogs}`, 20)
       .fill()
       .output();
     outputBuffer.output();

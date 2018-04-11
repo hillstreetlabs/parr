@@ -1,7 +1,7 @@
 import uuid from "uuid";
 import { addressJson } from "../util/esJson";
 
-const BATCH_SIZE = 100;
+const BATCH_SIZE = 200;
 const DELAY = 5000;
 
 export default class AddressIndexer {
