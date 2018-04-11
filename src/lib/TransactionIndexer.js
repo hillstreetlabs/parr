@@ -131,9 +131,9 @@ export default class TransactionIndexer {
       transaction.type = "from_transaction";
       transaction.join_field = {
         name: "from_transaction",
-        parent: `address:${transaction.from.address}`
+        parent: `address:${transaction.from_address}`
       };
-      transaction.routing = `address:${transaction.from.address}`;
+      transaction.routing = `address:${transaction.from_address}`;
       return transactionJson(transaction);
     });
     const indexed = await this.db.elasticsearch.bulkIndex(
@@ -149,7 +149,7 @@ export default class TransactionIndexer {
       transaction.type = "to_transaction";
       transaction.join_field = {
         name: "to_transaction",
-        parent: `address:${transaction.to.address}`
+        parent: `address:${transaction.to_address}`
       };
       transaction.routing = `address:${transaction.to.address}`;
       return transactionJson(transaction);
@@ -168,10 +168,12 @@ export default class TransactionIndexer {
       .pg("addresses")
       .where({ address: transaction.from_address })
       .first();
+    if (!transaction.from) console.log(transaction);
     transaction.to = await this.db
       .pg("addresses")
       .where({ address: transaction.to_address })
       .first();
+    if (!transaction.to) console.log(transaction);
     transaction.block = await this.db
       .pg("blocks")
       .where({ hash: transaction.block_hash })
