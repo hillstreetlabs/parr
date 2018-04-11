@@ -18,6 +18,7 @@ import BlockDownloader from "./lib/BlockDownloader";
 import TransactionDownloader from "./lib/TransactionDownloader";
 import InternalTransactionDownloader from "./lib/InternalTransactionDownloader";
 import implementsAbi from "./util/implementsAbi";
+import batchRPC from "./util/batchRPC";
 
 program
   .command("watch")
@@ -220,5 +221,42 @@ program
       console.log(`Error`, err);
     }
   });
+
+program.command("test1").action(async options => {
+  const db = await initDb();
+
+  db.rpc.sendAsync(
+    {
+      method: "eth_getTransactionReceipt",
+      params: [
+        "0xe9e91f1ee4b56c0df2e9f06c2b8c27c6076195a88a7b8537ba8313d80e6f124e"
+      ]
+    },
+    (err, gasPrice) => {
+      console.log(gasPrice);
+    }
+  );
+});
+
+program.command("test2").action(async options => {
+  const db = await initDb();
+  const batch = new batchRPC(db.rpc);
+
+  batch.add({
+    method: "eth_getTransactionReceipt",
+    params: [
+      "0xe9e91f1ee4b56c0df2e9f06c2b8c27c6076195a88a7b8537ba8313d80e6f124e"
+    ]
+  });
+
+  batch.add({
+    method: "eth_getTransactionReceipt",
+    params: [
+      "0xea1093d492a1dcb1bef708f771a99a96ff05dcab81ca76c31940300177fcf49f"
+    ]
+  });
+
+  batch.execute();
+});
 
 program.parse(process.argv);
