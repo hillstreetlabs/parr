@@ -1,11 +1,36 @@
 import Elasticsearch from "elasticsearch";
 
-const INDICES = [
-  "blocks",
-  "transactions",
-  "logs",
-  "addresses",
-  "internal-transactions"
+export const INDICES = [
+  {
+    name: "parr_blocks_transactions",
+    mappings: {
+      _doc: {
+        properties: {
+          join_field: { type: "join", relations: { block: "transaction" } },
+          type: { type: "keyword" },
+          hash: { type: "keyword" },
+          to: { type: "object" },
+          from: { type: "object" },
+          value: { type: "double" }
+        }
+      }
+    }
+  },
+  {
+    name: "parr_addresses",
+    mappings: {
+      _doc: {
+        properties: {
+          join_field: {
+            type: "join",
+            relations: { address: ["to_transaction", "from_transaction"] }
+          },
+          type: { type: "keyword" },
+          value: { type: "double" }
+        }
+      }
+    }
+  }
 ];
 
 export default class ES {
@@ -16,24 +41,20 @@ export default class ES {
     });
   }
 
-  indices() {
-    return this.client.cat
-      .indices({ v: true })
-      .then(console.log)
-      .catch(err => console.error(`Error connecting to the es client: ${err}`));
-  }
-
   stats() {
     return this.client.indices.stats();
   }
 
-  resetIndices() {
-    INDICES.map(async indexName => {
+  reset() {
+    INDICES.map(async index => {
       const indexExists = await this.client.indices.exists({
-        index: indexName
+        index: index.name
       });
-      if (indexExists) await this.client.indices.delete({ index: indexName });
-      this.client.indices.create({ index: indexName });
+      if (indexExists) await this.client.indices.delete({ index: index.name });
+      return this.client.indices.create({
+        index: index.name,
+        body: { mappings: index.mappings }
+      });
     });
     return true;
   }
@@ -46,7 +67,7 @@ export default class ES {
     console.log(`There are ${response.count} documents in the ${index} index`);
   }
 
-  async bulkIndex(index, type, data) {
+  async bulkIndex(index, data, params = {}) {
     if (!await this.client.indices.exists({ index: index })) {
       throw `ES index ${index} does not exist`;
     }
@@ -62,8 +83,9 @@ export default class ES {
       bulkBody.push({
         update: {
           _index: index,
-          _type: type,
-          _id: item.id
+          _type: "_doc",
+          _id: item.id,
+          _routing: item.routing || undefined
         }
       });
 

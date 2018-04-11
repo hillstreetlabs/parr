@@ -117,18 +117,14 @@ export default class BlockDownloader {
       hash: transaction.hash,
       block_hash: transaction.blockHash,
       status: "imported",
-      block_hash: transaction.blockHash,
       from_address: transaction.from,
       to_address: transaction.to,
       data: {
-        blockHash: transaction.blockHash,
         blockNumber: transaction.blockNumber.toNumber(),
-        from: transaction.from,
         gas: transaction.gas.toString(10),
         gasPrice: Eth.fromWei(transaction.gasPrice, "ether"),
         nonce: transaction.nonce.toString(10),
-        to: transaction.to,
-        transactionIndex: transaction.transactionIndex.toString(10),
+        transactionIndex: transaction.transactionIndex.toNumber(),
         value: Eth.fromWei(transaction.value, "ether"),
         logs: []
       }
@@ -148,8 +144,6 @@ export default class BlockDownloader {
         difficulty: block.difficulty.toString(10),
         gasLimit: block.gasLimit.toString(10),
         gasUsed: block.gasUsed.toString(10),
-        hash: block.hash,
-        number: block.number.toString(),
         miner: block.miner,
         nonce: block.nonce.toString(10),
         parentHash: block.parentHash,

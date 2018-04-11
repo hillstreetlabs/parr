@@ -14,63 +14,64 @@ export const logJson = log => {
   };
 };
 
-export const transactionJson = transaction => {
+export const addressJson = address => {
   return {
-    block: transaction.block ? blockJson(transaction.block) : {},
-    blockHash: transaction.data.blockHash,
-    blockNumber: transaction.data.blockNumber,
-    contractAddress: transaction.receipt.contractAddress,
-    cumulativeGasUsed: transaction.receipt.cumulativeGasUsed,
-    from: transaction.data.from,
-    gas: transaction.data.gas,
-    gasPrice: transaction.data.gasPrice,
-    gasUsed: transaction.receipt.gasUsed,
+    type: "address",
+    join_field: "address",
+    address: address.address,
+    is_contract: address.is_contract,
+    is_ERC20: address.is_erc20,
+    is_ERC721: address.is_erc721,
+    abi: address.abi,
+    id: `address:${address.address}`
+  };
+};
+
+export const transactionJson = transaction => {
+  const type = transaction.type || "transaction";
+  return {
+    type: type,
+    routing: transaction.routing,
+    join_field: transaction.join_field,
+    contract_address: transaction.receipt.contractAddress,
+    cumulative_gas_used: parseInt(transaction.receipt.cumulativeGasUsed),
+    from: transaction.from
+      ? addressJson(transaction.from)
+      : { address: transaction.from_address },
+    gas: parseInt(transaction.data.gas),
+    gas_price: parseFloat(transaction.data.gasPrice),
+    gas_used: parseInt(transaction.receipt.gasUsed),
     hash: transaction.hash,
-    id: transaction.id,
-    internalTransactions: (transaction.internalTransactions || []).map(
+    id: `${type}:${transaction.hash}`,
+    internal_transactions: (transaction.internalTransactions || []).map(
       internalTransaction => internalTransactionJson(internalTransaction)
     ),
     logs: (transaction.logs || []).map(log => logJson(log)),
-    logsBloom: transaction.receipt.logsBloom,
     nonce: transaction.data.nonce,
     status: transaction.receipt.status,
-    to: transaction.data.to,
-    transactionIndex: transaction.data.transactionIndex,
-    value: transaction.data.value
+    to: transaction.to
+      ? addressJson(transaction.to)
+      : { address: transaction.to_address },
+    transaction_index: parseInt(transaction.data.transactionIndex),
+    value: parseFloat(transaction.data.value)
   };
 };
 
 export const blockJson = block => {
   return {
+    type: "block",
+    join_field: "block",
     difficulty: block.data.difficulty,
-    gasLimit: block.data.gasLimit,
-    gasUsed: block.data.gasUsed,
+    gas_limit: block.data.gasLimit,
+    gas_used: block.data.gasUsed,
     hash: block.data.hash,
-    id: block.id,
-    logs: (block.logs || []).map(log => logJson(log)),
+    id: `block:${block.hash}`,
     miner: block.data.miner,
     nonce: block.data.nonce,
-    parentHash: block.data.parentHash,
+    parent_hash: block.data.parentHash,
     size: block.data.size,
     timestamp: block.data.timestamp,
-    transactionCount: block.data.transactionCount,
-    transactions: (block.transactions || []).map(transaction =>
-      transactionJson(transaction)
-    )
-  };
-};
-
-export const addressJson = address => {
-  return {
-    address: address.address,
-    isContract: address.isContract,
-    isERC20: address.is_erc20,
-    isERC721: address.is_erc721,
-    abi: address.abi,
-    id: address.id,
-    transactions: (address.transactions || []).map(transaction =>
-      transactionJson(transaction)
-    )
+    transaction_count: block.data.transactionCount
   };
 };
 

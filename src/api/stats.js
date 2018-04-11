@@ -1,6 +1,7 @@
 import { version } from "../../package.json";
 import Eth from "ethjs";
 import { Router } from "express";
+import { INDICES } from "../lib/ES";
 
 export default ({ config, db }) => {
   let api = Router();
@@ -35,6 +36,11 @@ export default ({ config, db }) => {
       .count();
 
     const addressCount = await db.pg("addresses").count();
+    const addressCountByStatus = await db
+      .pg("addresses")
+      .select("status")
+      .groupBy("status")
+      .count();
 
     const contractCount = await db
       .pg("addresses")
@@ -50,6 +56,10 @@ export default ({ config, db }) => {
       .pg("addresses")
       .where("is_erc721", true)
       .count();
+
+    const esStats = await db.elasticsearch.client.indices.stats({
+      index: INDICES.map(index => index.name)
+    });
 
     res.json({
       blocks: {
@@ -69,8 +79,10 @@ export default ({ config, db }) => {
         total_count: addressCount[0].count,
         contract_count: contractCount[0].count,
         erc20_count: erc20Count[0].count,
-        erc721_count: erc721Count[0].count
-      }
+        erc721_count: erc721Count[0].count,
+        count_by_status: addressCountByStatus
+      },
+      elasticsearch: esStats
     });
   });
 

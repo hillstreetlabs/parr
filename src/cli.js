@@ -127,15 +127,6 @@ program
   });
 
 program
-  .command("reset")
-  .description("reset Elasticsearch")
-  .action(async options => {
-    const { elasticsearch } = await initDb();
-    elasticsearch.resetIndices();
-    console.log(`Reset elasticsearch indices`);
-  });
-
-program
   .command("importContract")
   .description("import a contract ABI")
   .option("-F, --file <dir>", "path to contract JSON with `abi` attribute")
@@ -205,6 +196,29 @@ program
     console.log(
       `Address ${options.address} ${answer} implement ${options.file}`
     );
+  });
+
+program
+  .command("es:reset")
+  .description("reset Elasticsearch")
+  .action(async options => {
+    const { elasticsearch, pg } = await initDb();
+    try {
+      const receipt = await elasticsearch.reset();
+      await pg("blocks")
+        .where("status", "indexed")
+        .update("status", "downloaded");
+      await pg("transactions")
+        .where("status", "indexed")
+        .update("status", "downloaded");
+      await pg("addresses")
+        .where("status", "indexed")
+        .update("status", "downloaded");
+      pg.destroy();
+      console.log(`Reset elasticsearch index`, receipt);
+    } catch (err) {
+      console.log(`Error`, err);
+    }
   });
 
 program.parse(process.argv);
