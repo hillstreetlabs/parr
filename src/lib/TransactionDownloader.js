@@ -5,6 +5,7 @@ import withTimeout from "../util/withTimeout";
 import implementsAbi from "../util/implementsAbi";
 import ERC20 from "../../contracts/ERC20.json";
 import ERC721 from "../../contracts/ERC721.json";
+import ERC721Original from "../../contracts/ERC721-original.json";
 import { Line, LineBuffer, Clear } from "clui";
 import { observable, autorun } from "mobx";
 import createTimer from "../util/createTimer";
@@ -21,6 +22,7 @@ export default class TransactionDownloader {
   contractCount = 0;
   erc20Count = 0;
   erc721Count = 0;
+  erc721OriginalCount = 0;
 
   constructor(db) {
     this.db = db;
@@ -178,6 +180,7 @@ export default class TransactionDownloader {
       if (addressJson.is_contract) this.contractCount++;
       if (addressJson.is_erc20) this.erc20Count++;
       if (addressJson.is_erc721) this.erc721Count++;
+      if (addressJson.is_erc721_original) this.erc721OriginalCount++;
       this.addressCount++;
       return saved;
     } catch (e) {
@@ -192,7 +195,8 @@ export default class TransactionDownloader {
       status: "downloaded",
       is_contract: bytecode != "0x",
       is_erc20: implementsAbi(ERC20.abi, bytecode),
-      is_erc721: implementsAbi(ERC721.abi, bytecode)
+      is_erc721: implementsAbi(ERC721.abi, bytecode),
+      is_erc721_original: implementsAbi(ERC721Original.abi, bytecode)
     };
   }
 
@@ -278,12 +282,14 @@ export default class TransactionDownloader {
       .column("Contracts", 13)
       .column("ERC20", 13)
       .column("ERC721", 13)
+      .column("ERC721 (Old)", 13)
       .fill()
       .output();
     new Line(outputBuffer)
       .column(`${this.contractCount}`, 13)
       .column(`${this.erc20Count}`, 13)
       .column(`${this.erc721Count}`, 13)
+      .column(`${this.erc721OriginalCount}`, 13)
       .fill()
       .output();
     new Line(outputBuffer).fill().output();

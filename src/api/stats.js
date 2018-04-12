@@ -57,6 +57,11 @@ export default ({ config, db }) => {
       .where("is_erc721", true)
       .count();
 
+    const erc721OriginalCount = await db
+      .pg("addresses")
+      .where("is_erc721_original", true)
+      .count();
+
     const esStats = await db.elasticsearch.client.indices.stats({
       index: INDICES.map(index => index.name)
     });
@@ -80,6 +85,7 @@ export default ({ config, db }) => {
         contract_count: contractCount[0].count,
         erc20_count: erc20Count[0].count,
         erc721_count: erc721Count[0].count,
+        erc721_original_count: erc721OriginalCount[0].count,
         count_by_status: addressCountByStatus
       },
       elasticsearch: esStats
