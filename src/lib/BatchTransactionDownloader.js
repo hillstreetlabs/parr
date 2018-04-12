@@ -260,7 +260,7 @@ export default class BatchTransactionDownloader {
       .column("Logs", 13)
       .column("Errors", 7)
       .fill()
-      .output();
+      .store();
     new Line(outputBuffer)
       .column(
         `${this.transactionCount} (${Math.floor(
@@ -280,8 +280,8 @@ export default class BatchTransactionDownloader {
       )
       .column(`${this.errorCount}`, 7)
       .fill()
-      .output();
-    new Line(outputBuffer).fill().output();
+      .store();
+    new Line(outputBuffer).fill().store();
 
     // Contract info
     new Line(outputBuffer)
@@ -289,14 +289,14 @@ export default class BatchTransactionDownloader {
       .column("ERC20", 13)
       .column("ERC721", 13)
       .fill()
-      .output();
+      .store();
     new Line(outputBuffer)
       .column(`${this.contractCount}`, 13)
       .column(`${this.erc20Count}`, 13)
       .column(`${this.erc721Count}`, 13)
       .fill()
-      .output();
-    new Line(outputBuffer).fill().output();
+      .store();
+    new Line(outputBuffer).fill().store();
 
     // Time
     const times = this.timer.get();
@@ -308,13 +308,13 @@ export default class BatchTransactionDownloader {
       .column("Postgres", 13)
       .column("Download", 13)
       .fill()
-      .output();
+      .store();
     new Line(outputBuffer)
       .column(`${Math.floor(totalSeconds)}s`, 13)
       .column(`${postgresPerc}%`, 13)
       .column(`${downloadPerc}%`, 13)
       .fill()
-      .output();
+      .store();
 
     outputBuffer.output();
   }
