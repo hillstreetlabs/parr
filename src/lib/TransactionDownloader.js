@@ -177,10 +177,10 @@ export default class TransactionDownloader {
       const bytecode = await withTimeout(this.db.web3.getCode(address), 5000);
       const addressJson = this.addressJson(address, bytecode);
       const saved = await this.db.pg("addresses").insert(addressJson);
-      if (addressJson.is_contract) this.contractCount++;
-      if (addressJson.is_erc20) this.erc20Count++;
-      if (addressJson.is_erc721) this.erc721Count++;
-      if (addressJson.is_erc721_original) this.erc721OriginalCount++;
+      if (bytecode != "0x") this.contractCount++;
+      if (addressJson.implements.erc20) this.erc20Count++;
+      if (addressJson.implements.erc721) this.erc721Count++;
+      if (addressJson.implements.erc721_original) this.erc721OriginalCount++;
       this.addressCount++;
       return saved;
     } catch (e) {
@@ -193,10 +193,12 @@ export default class TransactionDownloader {
     return {
       address: address,
       status: "downloaded",
-      is_contract: bytecode != "0x",
-      is_erc20: implementsAbi(ERC20.abi, bytecode),
-      is_erc721: implementsAbi(ERC721.abi, bytecode),
-      is_erc721_original: implementsAbi(ERC721Original.abi, bytecode)
+      bytecode: bytecode,
+      implements: {
+        erc20: implementsAbi(ERC20.abi, bytecode),
+        erc721: implementsAbi(ERC721.abi, bytecode),
+        erc721_original: implementsAbi(ERC721Original.abi, bytecode)
+      }
     };
   }
 

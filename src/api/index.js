@@ -1,5 +1,6 @@
 import { version } from "../../package.json";
 import { Router } from "express";
+import { abiToSignatures } from "../util/implementsAbi";
 
 export default ({ config, db }) => {
   let api = Router();
@@ -23,6 +24,26 @@ export default ({ config, db }) => {
   api.post("/all", async (req, res) => {
     const query = await db.elasticsearch.client.search(req.params);
     res.json({ query });
+  });
+
+  api.post("/implements_abi", async (req, res) => {
+    const signaturesString = abiToSignatures(req.body).join(" ");
+    const query = {
+      index: "parr_addresses",
+      body: {
+        query: {
+          match: {
+            bytecode: {
+              query: signaturesString,
+              operator: "and",
+              zero_terms_query: "all"
+            }
+          }
+        }
+      }
+    };
+    const response = await db.elasticsearch.client.search(query);
+    res.json({ response });
   });
 
   api.options("/*", (req, res) => {
