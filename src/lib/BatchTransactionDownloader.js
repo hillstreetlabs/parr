@@ -217,7 +217,6 @@ export default class BatchTransactionDownloader {
         address: log.address,
         data: log.data,
         blockNumber: parseInt(log.blockNumber),
-        removed: log.removed,
         transactionIndex: parseInt(log.transactionIndex)
       }
     };
