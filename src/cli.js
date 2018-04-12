@@ -18,7 +18,9 @@ import BlockDownloader from "./lib/BlockDownloader";
 import TransactionDownloader from "./lib/TransactionDownloader";
 import InternalTransactionDownloader from "./lib/InternalTransactionDownloader";
 import implementsAbi from "./util/implementsAbi";
-import batchRPC from "./util/batchRPC";
+import createTimer from "./util/createTimer";
+import withTimeout from "./util/withTimeout";
+import { sendBatch } from "./util/rpc";
 
 program
   .command("watch")
@@ -222,41 +224,61 @@ program
     }
   });
 
-program.command("test1").action(async options => {
+program.command("benchmark").action(async options => {
   const db = await initDb();
+  const hashes = [
+    "0xe9e91f1ee4b56c0df2e9f06c2b8c27c6076195a88a7b8537ba8313d80e6f124e",
+    "0xea1093d492a1dcb1bef708f771a99a96ff05dcab81ca76c31940300177fcf49f"
+  ];
 
-  db.rpc.sendAsync(
-    {
+  // db.web3Provider.sendAsync(
+  //   [
+  //     {
+  //       jsonrpc: "2.0",
+  //       id: 1,
+  //       method: "eth_getTransactionReceipt",
+  //       params: [
+  //         "0xe9e91f1ee4b56c0df2e9f06c2b8c27c6076195a88a7b8537ba8313d80e6f124e"
+  //       ]
+  //     },
+  //     {
+  //       jsonrpc: "2.0",
+  //       id: 2,
+  //       method: "eth_getTransactionReceipt",
+  //       params: [
+  //         "0xea1093d492a1dcb1bef708f771a99a96ff05dcab81ca76c31940300177fcf49f"
+  //       ]
+  //     }
+  //   ],
+  //   (err, receipt) => {
+  //     // console.log(err, receipt);
+  //     receipt.forEach(res => {
+  //       console.log(res.result.logs);
+  //     });
+  //   }
+  // );
+
+  const timer = createTimer();
+  for (let i = 0; i < 10000; i++) {
+    const serialTimer = timer.time("serial");
+
+    await Promise.all(
+      hashes.map(hash => withTimeout(db.web3.getTransactionReceipt(hash), 5000))
+    );
+
+    serialTimer.stop();
+
+    const batchTimer = timer.time("batch");
+
+    const messages = hashes.map(hash => ({
       method: "eth_getTransactionReceipt",
-      params: [
-        "0xe9e91f1ee4b56c0df2e9f06c2b8c27c6076195a88a7b8537ba8313d80e6f124e"
-      ]
-    },
-    (err, gasPrice) => {
-      console.log(gasPrice);
-    }
-  );
-});
+      params: [hash]
+    }));
 
-program.command("test2").action(async options => {
-  const db = await initDb();
-  const batch = new batchRPC(db.rpc);
-
-  batch.add({
-    method: "eth_getTransactionReceipt",
-    params: [
-      "0xe9e91f1ee4b56c0df2e9f06c2b8c27c6076195a88a7b8537ba8313d80e6f124e"
-    ]
-  });
-
-  batch.add({
-    method: "eth_getTransactionReceipt",
-    params: [
-      "0xea1093d492a1dcb1bef708f771a99a96ff05dcab81ca76c31940300177fcf49f"
-    ]
-  });
-
-  batch.execute();
+    await withTimeout(sendBatch(db.web3Provider, messages), 5000);
+    batchTimer.stop();
+    console.log(timer.get());
+  }
 });
 
 program.parse(process.argv);

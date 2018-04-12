@@ -8,21 +8,13 @@ import knexConfig from "../knexfile";
 
 // Returns an object with references to various databases
 export default async () => {
-  const web3 = new Eth(
-    new HttpProvider(
-      `https://${process.env.INFURA_NETWORK}.infura.io/${
-        process.env.INFURA_KEY
-      }`
-    )
-  );
+  // const web3Provider = new HttpProvider(
+  //   `https://${process.env.INFURA_NETWORK}.infura.io/${process.env.INFURA_KEY}`
+  // );
 
-  const rpc = new EthRPC(
-    new HttpProvider(
-      `https://${process.env.INFURA_NETWORK}.infura.io/${
-        process.env.INFURA_KEY
-      }`
-    )
-  );
+  const web3Provider = new HttpProvider(process.env.PARITY_URL);
+
+  const web3 = new Eth(web3Provider);
 
   const elasticsearch = new ES();
 
@@ -32,5 +24,5 @@ export default async () => {
 
   console.log("Started databases");
 
-  return { web3, elasticsearch, etherscan, pg, rpc };
+  return { web3, web3Provider, elasticsearch, etherscan, pg };
 };
