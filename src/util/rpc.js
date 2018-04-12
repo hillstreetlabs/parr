@@ -22,7 +22,7 @@ export const sendBatch = (web3Provider, requests) => {
 
       results = results || [];
       results = requests.map((request, index) => {
-        return results[index] || {};
+        return results[index].result || {};
       });
 
       resolve(results);
