@@ -6,14 +6,8 @@ import Knex from "knex";
 import knexConfig from "../knexfile";
 
 // Returns an object with references to various databases
-export default async () => {
-  const web3 = new Eth(
-    new HttpProvider(
-      `https://${process.env.INFURA_NETWORK}.infura.io/${
-        process.env.INFURA_KEY
-      }`
-    )
-  );
+export default () => {
+  const web3 = new Eth(new HttpProvider(process.env.JSON_RPC_URL));
 
   const elasticsearch = new ES();
 
