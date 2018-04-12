@@ -105,11 +105,11 @@ export default class TransactionDownloader {
       timer.stop();
       timer = this.timer.time("postgres");
       await Promise.all([
-        this.importAddress(receipt.to || receipt.contractAddress),
-        this.importAddress(receipt.from)
+        this.importAddress(transaction.to_address || receipt.contractAddress),
+        this.importAddress(transaction.from_address)
       ]);
       const logs = await this.importLogs(
-        receipt.to || receipt.contractAddress,
+        transaction.to_address || receipt.contractAddress,
         receipt.logs
       );
       await upsert(
@@ -206,15 +206,14 @@ export default class TransactionDownloader {
     return {
       block_hash: log.blockHash,
       transaction_hash: log.transactionHash,
-      log_index: log.logIndex.toNumber(),
+      log_index: parseInt(log.logIndex),
       status: "downloaded",
       decoded: decoded,
       data: {
         address: log.address,
         data: log.data,
-        blockNumber: log.blockNumber.toNumber(),
-        removed: log.removed,
-        transactionIndex: log.transactionIndex.toNumber()
+        blockNumber: parseInt(log.blockNumber),
+        transactionIndex: parseInt(log.transactionIndex)
       }
     };
   }
