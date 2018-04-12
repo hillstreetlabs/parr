@@ -171,6 +171,7 @@ export default class TransactionDownloader {
   }
 
   async importAddress(address) {
+    console.log(address);
     try {
       const bytecode = await withTimeout(this.db.web3.getCode(address), 5000);
       const addressJson = this.addressJson(address, bytecode);
@@ -207,7 +208,6 @@ export default class TransactionDownloader {
         address: log.address,
         data: log.data,
         blockNumber: parseInt(log.blockNumber),
-        removed: log.removed,
         transactionIndex: parseInt(log.transactionIndex)
       }
     };
