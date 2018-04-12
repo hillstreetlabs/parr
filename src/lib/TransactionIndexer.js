@@ -201,16 +201,16 @@ export default class TransactionIndexer {
         20
       );
     });
-    statHeaders.fill().output();
-    statValues.fill().output();
+    statHeaders.fill().store();
+    statValues.fill().store();
     new Line(outputBuffer)
       .column("Transactions", 20)
       .fill()
-      .output();
+      .store();
     new Line(outputBuffer)
       .column(`${this.indexedTransactions}`, 20)
       .fill()
-      .output();
+      .store();
     outputBuffer.output();
   }
 }
