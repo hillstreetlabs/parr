@@ -19,9 +19,9 @@ export const addressJson = address => {
     type: "address",
     join_field: "address",
     address: address.address,
-    is_contract: address.is_contract,
-    is_ERC20: address.is_erc20,
-    is_ERC721: address.is_erc721,
+    is_contract: address.bytecode != "0x",
+    bytecode: address.bytecode,
+    implements: address.implements || {},
     abi: address.abi,
     id: `address:${address.address}`
   };

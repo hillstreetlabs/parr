@@ -18,6 +18,23 @@ export const INDICES = [
   },
   {
     name: "parr_addresses",
+    settings: {
+      analysis: {
+        analyzer: {
+          bytecode_analyzer: {
+            tokenizer: "bytecode_tokenizer"
+          }
+        },
+        tokenizer: {
+          bytecode_tokenizer: {
+            type: "ngram",
+            min_gram: 8,
+            max_gram: 8,
+            token_chars: ["letter", "digit"]
+          }
+        }
+      }
+    },
     mappings: {
       _doc: {
         properties: {
@@ -26,7 +43,9 @@ export const INDICES = [
             relations: { address: ["to_transaction", "from_transaction"] }
           },
           type: { type: "keyword" },
-          value: { type: "double" }
+          value: { type: "double" },
+          implements: { type: "object" },
+          bytecode: { type: "text", analyzer: "bytecode_analyzer" }
         }
       }
     }
@@ -53,7 +72,7 @@ export default class ES {
       if (indexExists) await this.client.indices.delete({ index: index.name });
       return this.client.indices.create({
         index: index.name,
-        body: { mappings: index.mappings }
+        body: { settings: index.settings, mappings: index.mappings }
       });
     });
     return true;
