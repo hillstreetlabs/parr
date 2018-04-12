@@ -35,8 +35,8 @@ export default class BatchTransactionDownloader {
   async run() {
     if (this.isExiting) return;
     let transactions = await this.getTransactions();
-    let receipts = await this.getReceipts(transactions);
     if (transactions.length > 0) {
+      let receipts = await this.getReceipts(transactions);
       await this.importTransactions(transactions, receipts);
       this.run();
     } else {
