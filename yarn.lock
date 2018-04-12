@@ -1706,7 +1706,7 @@ ethjs-rpc@0.1.8:
   version "0.1.8"
   resolved "https://registry.yarnpkg.com/ethjs-rpc/-/ethjs-rpc-0.1.8.tgz#1676740e41c7228196a71189d33f15c9c85b599d"
 
-ethjs-rpc@0.1.9, ethjs-rpc@^0.1.9:
+ethjs-rpc@0.1.9:
   version "0.1.9"
   resolved "https://registry.yarnpkg.com/ethjs-rpc/-/ethjs-rpc-0.1.9.tgz#389dcd61be52e72bc47111a75805f8e45882faea"
 
