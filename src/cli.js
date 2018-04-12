@@ -16,12 +16,10 @@ import BlockImporter from "./lib/BlockImporter";
 import BlockWatcher from "./lib/BlockWatcher";
 import BlockDownloader from "./lib/BlockDownloader";
 import TransactionDownloader from "./lib/TransactionDownloader";
-import BatchTransactionDownloader from "./lib/BatchTransactionDownloader";
 import InternalTransactionDownloader from "./lib/InternalTransactionDownloader";
 import implementsAbi from "./util/implementsAbi";
 import createTimer from "./util/createTimer";
 import withTimeout from "./util/withTimeout";
-import { sendBatch } from "./util/rpc";
 
 program
   .command("watch")
@@ -83,13 +81,9 @@ program
 program
   .command("downloadTransactions")
   .description("download transaction(s) from Ethereum to Parr")
-  .option("-B, --batch", "batch download receipts")
-  .option("-P, --parity", "use Parity as web3 provider")
   .action(async options => {
-    const db = await initDb(options.parity);
-    let downloader;
-    if (options.batch) downloader = new BatchTransactionDownloader(db);
-    else downloader = new TransactionDownloader(db);
+    const db = await initDb();
+    const downloader = new TransactionDownloader(db);
     downloader.run();
     process.on("SIGINT", () => downloader.exit());
   });
