@@ -23,7 +23,7 @@ program
   .command("watch")
   .description("watch for new blocks and import them")
   .action(async options => {
-    const db = await initDb();
+    const db = initDb();
     const watcher = new BlockWatcher(db);
     watcher.run();
   });
@@ -37,7 +37,7 @@ program
   .option("-L, --last <n>", "Parse the last n blocks", parseInt)
   .option("-A, --all", "Parse all blocks")
   .action(async options => {
-    const db = await initDb();
+    const db = initDb();
     const importer = new BlockImporter(db);
     try {
       const latest = (await db.web3.blockNumber()).toNumber() - 6;
@@ -70,7 +70,7 @@ program
   .command("downloadBlocks")
   .description("Download block data from Ethereum ")
   .action(async options => {
-    const db = await initDb();
+    const db = initDb();
     const downloader = new BlockDownloader(db);
     downloader.run();
     process.on("SIGINT", () => downloader.exit());
@@ -80,7 +80,7 @@ program
   .command("downloadTransactions")
   .description("download transaction(s) from Ethereum to Parr")
   .action(async options => {
-    const db = await initDb();
+    const db = initDb();
     const downloader = new TransactionDownloader(db);
     downloader.run();
     process.on("SIGINT", () => downloader.exit());
@@ -90,7 +90,7 @@ program
   .command("downloadInternalTransactions")
   .description("download internal transaction(s) from Ethereum to Parr")
   .action(async options => {
-    const db = await initDb();
+    const db = initDb();
     const downloader = new InternalTransactionDownloader(db);
     downloader.run();
     process.on("SIGINT", () => downloader.exit());
@@ -100,7 +100,7 @@ program
   .command("indexTransactions")
   .description("index transaction(s) from Parr PG instance to Parr ES instance")
   .action(async options => {
-    const db = await initDb();
+    const db = initDb();
     const indexer = new TransactionIndexer(db);
     indexer.run();
     process.on("SIGINT", () => indexer.exit());
@@ -110,7 +110,7 @@ program
   .command("indexBlocks")
   .description("index block(s) from Parr PG instance to Parr ES instance")
   .action(async options => {
-    const db = await initDb();
+    const db = initDb();
     const indexer = new BlockIndexer(db);
     indexer.run();
     process.on("SIGINT", () => indexer.exit());
@@ -120,7 +120,7 @@ program
   .command("indexAddresses")
   .description("index address(es) from Parr PG instance to Parr ES instance")
   .action(async options => {
-    const db = await initDb();
+    const db = initDb();
     const indexer = new AddressIndexer(db);
     indexer.run();
     process.on("SIGINT", () => indexer.exit());
@@ -132,7 +132,7 @@ program
   .option("-F, --file <dir>", "path to contract JSON with `abi` attribute")
   .option("-A, --address <n>", "contract address on the chain")
   .action(async options => {
-    const db = await initDb();
+    const db = initDb();
 
     console.log(`Reading contract file…`);
     const contractFileContent = fs.readFileSync(options.file);
@@ -157,7 +157,7 @@ program
     const util = require("util");
     const readdir = util.promisify(fs.readdir);
     const readFile = util.promisify(fs.readFile);
-    const db = await initDb();
+    const db = initDb();
 
     console.log(`Reading contract files…`);
     let _err,
@@ -187,7 +187,7 @@ program
   .option("-F, --file <dir>", "path to contract JSON with `abi` attribute")
   .option("-A, --address <n>", "contract address on the chain")
   .action(async options => {
-    const db = await initDb();
+    const db = initDb();
     const contractFileContent = fs.readFileSync(options.file);
     const contractJSON = JSON.parse(contractFileContent);
     const bytecode = await db.web3.getCode(options.address);
@@ -202,7 +202,7 @@ program
   .command("es:reset")
   .description("reset Elasticsearch")
   .action(async options => {
-    const { elasticsearch, pg } = await initDb();
+    const { elasticsearch, pg } = initDb();
     try {
       const receipt = await elasticsearch.reset();
       await pg("blocks")
