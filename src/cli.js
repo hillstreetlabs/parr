@@ -18,9 +18,6 @@ import BlockDownloader from "./lib/BlockDownloader";
 import TransactionDownloader from "./lib/TransactionDownloader";
 import InternalTransactionDownloader from "./lib/InternalTransactionDownloader";
 import implementsAbi from "./util/implementsAbi";
-import createTimer from "./util/createTimer";
-import withTimeout from "./util/withTimeout";
-import { sendBatch } from "./util/rpc";
 
 program
   .command("watch")
