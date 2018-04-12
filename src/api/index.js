@@ -5,25 +5,21 @@ import { abiToSignatures } from "../util/implementsAbi";
 export default ({ config, db }) => {
   let api = Router();
 
-  api.post("/blocks", async (req, res) => {
+  api.post("/blocks_transactions", async (req, res) => {
     const response = await db.elasticsearch.client.search({
       index: "parr_blocks_transactions",
       body: req.body
     });
-    res.json({ response });
+    res.json({ response: response.hits });
   });
 
   api.post("/addresses", async (req, res) => {
     const response = await db.elasticsearch.client.search({
       index: "parr_addresses",
+      size: 50,
       body: req.body
     });
-    res.json({ response });
-  });
-
-  api.post("/all", async (req, res) => {
-    const query = await db.elasticsearch.client.search(req.params);
-    res.json({ query });
+    res.json({ response: response.hits });
   });
 
   api.post("/implements_abi", async (req, res) => {
@@ -43,7 +39,7 @@ export default ({ config, db }) => {
       }
     };
     const response = await db.elasticsearch.client.search(query);
-    res.json({ response });
+    res.json({ response: response.hits });
   });
 
   api.options("/*", (req, res) => {
