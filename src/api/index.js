@@ -10,23 +10,24 @@ export default ({ config, db }) => {
       index: "parr_blocks_transactions",
       body: req.body
     });
-    res.json({ response: response.hits });
+    res.json({ response });
   });
 
   api.post("/addresses", async (req, res) => {
     const response = await db.elasticsearch.client.search({
       index: "parr_addresses",
-      size: 50,
       body: req.body
     });
-    res.json({ response: response.hits });
+    res.json({ response });
   });
 
   api.post("/implements_abi", async (req, res) => {
-    const signaturesString = abiToSignatures(req.body).join(" ");
+    const signaturesString = abiToSignatures(req.body.abi).join(" ");
     const query = {
       index: "parr_addresses",
       body: {
+        from: req.body.from,
+        size: req.body.size,
         query: {
           match: {
             bytecode: {
@@ -39,7 +40,7 @@ export default ({ config, db }) => {
       }
     };
     const response = await db.elasticsearch.client.search(query);
-    res.json({ response: response.hits });
+    res.json({ response });
   });
 
   api.options("/*", (req, res) => {
