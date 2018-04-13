@@ -15,6 +15,7 @@ jobs:
           name: Deploy to EC2
           command: |
             ssh $DEPLOY_USER@$DEPLOY_HOST '\
+              . ~/.bash_profile; \
               cd ~/parr && git fetch origin master && \
               git reset --hard origin/master && \
               bash scripts/deploy.sh \
