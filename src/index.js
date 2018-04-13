@@ -9,6 +9,7 @@ import morgan from "morgan";
 import bodyParser from "body-parser";
 import initDb from "./db";
 import api from "./api";
+import stats from "./api/stats";
 import config from "./config.json";
 
 let app = express();
@@ -35,7 +36,9 @@ async function start() {
   const db = await initDb();
 
   // api router
-  app.use(api({ config, db }));
+  app.use("/", api({ config, db }));
+
+  app.use("/stats", stats({ config, db }));
 
   app.server.listen(process.env.PORT || config.port, () => {
     console.log(`Started on port ${app.server.address().port}`);

@@ -1,8 +1,6 @@
 import { version } from "../../package.json";
 import { Router } from "express";
 import { abiToSignatures } from "../util/implementsAbi";
-import queries from "./queries";
-import stats from "./stats";
 
 export default ({ config, db }) => {
   let api = Router();
@@ -61,9 +59,6 @@ export default ({ config, db }) => {
     const provider = web3.currentProvider;
     res.json({ version, provider });
   });
-
-  api.use("/queries", queries({ config, db }));
-  api.use("/stats", stats({ config, db }));
 
   return api;
 };
