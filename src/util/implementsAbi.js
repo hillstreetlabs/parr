@@ -1,7 +1,9 @@
 import EthjsAbi from "ethjs-abi";
 
 export const abiToSignatures = abi => {
-  return abi.map(method => EthjsAbi.encodeSignature(method).substring(2));
+  return abi
+    .filter(method => method.name && method.type)
+    .map(method => EthjsAbi.encodeSignature(method).substring(2));
 };
 
 export default (abi, bytecode) => {
