@@ -18,7 +18,7 @@ export default ({ config, db }) => {
       index: "parr_addresses",
       body: req.body
     });
-    res.json({ response: response.hits });
+    res.json({ response });
   });
 
   api.post("/implements_abi", async (req, res) => {
