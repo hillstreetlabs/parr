@@ -61,6 +61,7 @@ export const blockJson = block => {
   return {
     type: "block",
     join_field: "block",
+    number: block.number,
     difficulty: block.data.difficulty,
     gas_limit: block.data.gasLimit,
     gas_used: block.data.gasUsed,
