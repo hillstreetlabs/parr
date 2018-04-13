@@ -11,7 +11,8 @@ const sha1 = string =>
 const queryJson = query => ({
   query: {
     query: query.query,
-    hash: query.hash
+    hash: query.hash,
+    api: query.api
   }
 });
 
@@ -21,11 +22,17 @@ export default ({ db }) => {
   // Create query
   api.post("/", async (req, res) => {
     const queryString = req.body.query;
-    if (!queryString) {
-      return res.status(400).json({ error: "Query is required" });
+    const api = req.body.api;
+
+    if (!queryString || !api) {
+      return res.status(400).json({ error: "Query and API are required" });
     }
 
-    const hash = sha1(queryString);
+    if (!["blocks_transactions", "addresses", "implements_abi"].includes(api)) {
+      return res.status(400).json({ error: "API is invalid" });
+    }
+
+    const hash = sha1(api + queryString);
     let query = await db
       .pg("queries")
       .select("*")
@@ -40,7 +47,8 @@ export default ({ db }) => {
       query = {
         query: queryString,
         hash,
-        use_count: 1
+        use_count: 1,
+        api
       };
       await db.pg("queries").insert(query);
     }

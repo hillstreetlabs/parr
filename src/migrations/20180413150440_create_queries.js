@@ -6,6 +6,7 @@ exports.up = async function(knex, Promise) {
     table.index("hash");
     table.integer("use_count");
     table.index("use_count");
+    table.string("api");
     table.timestamps(true, true);
   });
 };
