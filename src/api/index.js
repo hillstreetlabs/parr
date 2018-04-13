@@ -10,7 +10,7 @@ export default ({ config, db }) => {
       index: "parr_blocks_transactions",
       body: req.body
     });
-    res.json({ response: response.hits });
+    res.json({ response });
   });
 
   api.post("/addresses", async (req, res) => {
@@ -40,7 +40,7 @@ export default ({ config, db }) => {
       }
     };
     const response = await db.elasticsearch.client.search(query);
-    res.json({ response: response.hits });
+    res.json({ response });
   });
 
   api.options("/*", (req, res) => {
