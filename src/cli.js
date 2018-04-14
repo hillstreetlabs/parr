@@ -17,6 +17,7 @@ import BlockWatcher from "./lib/BlockWatcher";
 import BlockDownloader from "./lib/BlockDownloader";
 import TransactionDownloader from "./lib/TransactionDownloader";
 import InternalTransactionDownloader from "./lib/InternalTransactionDownloader";
+import AddressImporter from "./lib/AddressImporter";
 import implementsAbi from "./util/implementsAbi";
 
 program
@@ -124,6 +125,16 @@ program
     const indexer = new AddressIndexer(db);
     indexer.run();
     process.on("SIGINT", () => indexer.exit());
+  });
+
+program
+  .command("importAddresses")
+  .description("import address(es)")
+  .action(async options => {
+    const db = initDb();
+    const importer = new AddressImporter(db);
+    importer.run();
+    process.on("SIGINT", () => importer.exit());
   });
 
 program
