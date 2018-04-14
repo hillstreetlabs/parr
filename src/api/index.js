@@ -8,19 +8,27 @@ export default ({ config, db }) => {
   let api = Router();
 
   api.post("/blocks_transactions", async (req, res) => {
-    const response = await db.elasticsearch.client.search({
-      index: "parr_blocks_transactions",
-      body: req.body
-    });
-    res.json({ response });
+    try {
+      const response = await db.elasticsearch.client.search({
+        index: "parr_blocks_transactions",
+        body: req.body
+      });
+      res.json({ response });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
   });
 
   api.post("/addresses", async (req, res) => {
-    const response = await db.elasticsearch.client.search({
-      index: "parr_addresses",
-      body: req.body
-    });
-    res.json({ response });
+    try {
+      const response = await db.elasticsearch.client.search({
+        index: "parr_addresses",
+        body: req.body
+      });
+      res.json({ response });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
   });
 
   api.post("/implements_abi", async (req, res) => {
@@ -41,8 +49,12 @@ export default ({ config, db }) => {
         }
       }
     };
-    const response = await db.elasticsearch.client.search(query);
-    res.json({ response });
+    try {
+      const response = await db.elasticsearch.client.search(query);
+      res.json({ response });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
   });
 
   api.options("/*", (req, res) => {
