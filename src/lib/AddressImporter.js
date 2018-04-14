@@ -7,7 +7,7 @@ import ERC721 from "../../contracts/ERC721.json";
 import ERC721Original from "../../contracts/ERC721-original.json";
 import Crowdsale from "../../contracts/Crowdsale.json";
 
-const BATCH_SIZE = 30;
+const BATCH_SIZE = 50;
 const DELAY = 5000;
 
 export const importAddress = async (db, address, customParams = {}) => {
