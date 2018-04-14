@@ -113,7 +113,6 @@ export default class TransactionDownloader {
       timer.stop();
       this.transactionCount++;
     } catch (err) {
-      console.log(err);
       this.errorCount++;
       this.errors.push(err);
       return this.unlockTransaction(transaction);
