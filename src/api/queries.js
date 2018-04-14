@@ -9,11 +9,9 @@ const sha1 = string =>
     .toString("hex");
 
 const queryJson = query => ({
-  query: {
-    query: query.query,
-    hash: query.hash,
-    api: query.api
-  }
+  query: query.query,
+  hash: query.hash,
+  api: query.api
 });
 
 export default ({ db }) => {
@@ -21,8 +19,7 @@ export default ({ db }) => {
 
   // Create query
   api.post("/", async (req, res) => {
-    const queryString = req.body.query;
-    const api = req.body.api;
+    const { api, query: queryString } = req.body;
 
     if (!queryString || !api) {
       return res.status(400).json({ error: "Query and API are required" });
@@ -33,37 +30,27 @@ export default ({ db }) => {
     }
 
     const hash = sha1(api + queryString);
-    let query = await db
+    const insert = db
       .pg("queries")
-      .select("*")
-      .where({ hash })
-      .first();
-    if (query) {
-      await db
-        .pg("queries")
-        .where({ hash })
-        .update({ use_count: query.use_count + 1 });
-    } else {
-      query = {
-        query: queryString,
-        hash,
-        use_count: 1,
-        api
-      };
-      await db.pg("queries").insert(query);
-    }
+      .insert({ query: queryString, hash, use_count: 1, api });
+    const query = await db.pg
+      .raw(
+        `? ON CONFLICT (hash) DO UPDATE SET use_count = queries.use_count + 1 returning *`,
+        insert
+      )
+      .get("rows")
+      .get(0);
 
-    res.json(queryJson(query));
+    res.json({ query: queryJson(query) });
   });
 
   api.get("/:hash", async (req, res) => {
     const hash = req.params.hash;
     let query = await db
       .pg("queries")
-      .select("*")
       .where({ hash })
       .first();
-    if (query) res.json(queryJson(query));
+    if (query) res.json({ query: queryJson(query) });
     else res.status(404).send({ error: "Not found" });
   });
 

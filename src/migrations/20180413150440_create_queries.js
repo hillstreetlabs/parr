@@ -4,6 +4,7 @@ exports.up = async function(knex, Promise) {
     table.text("query");
     table.string("hash");
     table.index("hash");
+    table.unique("hash");
     table.integer("use_count");
     table.index("use_count");
     table.string("api");
