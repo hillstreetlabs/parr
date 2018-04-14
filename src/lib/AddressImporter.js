@@ -50,7 +50,7 @@ export const importAddress = async (db, address, customParams = {}) => {
   return saved;
 };
 
-export default class AddressIndexer {
+export default class AddressImporter {
   constructor(db) {
     this.db = db;
     this.timer;
@@ -108,7 +108,7 @@ export default class AddressIndexer {
       console.log(`Imported ${addresses.length} addresses`);
       return true;
     } catch (err) {
-      console.log(`Failed to index addresses`, err);
+      console.log(`Failed to import addresses`, err);
       return this.unlockAddresses();
     }
   }
