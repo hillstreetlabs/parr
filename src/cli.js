@@ -4,10 +4,7 @@ require("dotenv").config();
 import "source-map-support/register";
 
 import program from "commander";
-import clui from "clui";
-import { observe } from "mobx";
 import initDb from "./db";
-import fs from "fs";
 
 import BlockIndexer from "./lib/BlockIndexer";
 import TransactionIndexer from "./lib/TransactionIndexer";
@@ -18,7 +15,6 @@ import BlockDownloader from "./lib/BlockDownloader";
 import TransactionDownloader from "./lib/TransactionDownloader";
 import InternalTransactionDownloader from "./lib/InternalTransactionDownloader";
 import AddressImporter from "./lib/AddressImporter";
-import implementsAbi from "./util/implementsAbi";
 
 program
   .command("watch")
@@ -129,84 +125,14 @@ program
 
 program
   .command("importAddresses")
-  .description("import address(es)")
+  .description(
+    "import address(es) marked as stale and check against known ABIs"
+  )
   .action(async options => {
     const db = initDb();
     const importer = new AddressImporter(db);
     importer.run();
     process.on("SIGINT", () => importer.exit());
-  });
-
-program
-  .command("importContract")
-  .description("import a contract ABI")
-  .option("-F, --file <dir>", "path to contract JSON with `abi` attribute")
-  .option("-A, --address <n>", "contract address on the chain")
-  .action(async options => {
-    const db = initDb();
-
-    console.log(`Reading contract file…`);
-    const contractFileContent = fs.readFileSync(options.file);
-
-    console.log(`Parsing contract JSON…`);
-    const contractJSON = JSON.parse(contractFileContent);
-
-    console.log(`Inserting contract ABI…`);
-    await db.pg("contracts").insert({
-      address: options.address,
-      abi: JSON.stringify(contractJSON.abi)
-    });
-
-    console.log(`Done.`);
-    db.pg.destroy();
-  });
-
-program
-  .command("seedContracts")
-  .description("Import generic contracts")
-  .action(async () => {
-    const util = require("util");
-    const readdir = util.promisify(fs.readdir);
-    const readFile = util.promisify(fs.readFile);
-    const db = initDb();
-
-    console.log(`Reading contract files…`);
-    let _err,
-      fileNames = await readdir("./contracts/");
-    let fileContents = await Promise.all(
-      fileNames.map(fileName => {
-        let fullFilePath = `./contracts/${fileName}`;
-        return readFile(fullFilePath);
-      })
-    );
-
-    console.log(`Parsing contract JSON…`);
-    let contractAttributes = fileContents.map(fileContent => {
-      let contractJSON = JSON.parse(fileContent);
-      return { abi: JSON.stringify(contractJSON.abi) };
-    });
-
-    console.log(`Inserting contract ABIs…`);
-    await db.pg("contracts").insert(contractAttributes);
-
-    db.pg.destroy();
-  });
-
-program
-  .command("implements")
-  .description("Check address for ERC standards")
-  .option("-F, --file <dir>", "path to contract JSON with `abi` attribute")
-  .option("-A, --address <n>", "contract address on the chain")
-  .action(async options => {
-    const db = initDb();
-    const contractFileContent = fs.readFileSync(options.file);
-    const contractJSON = JSON.parse(contractFileContent);
-    const bytecode = await db.web3.getCode(options.address);
-    const result = implementsAbi(contractJSON.abi, bytecode);
-    const answer = result ? "DOES" : "DOES NOT";
-    console.log(
-      `Address ${options.address} ${answer} implement ${options.file}`
-    );
   });
 
 program
