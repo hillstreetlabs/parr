@@ -1,5 +1,6 @@
 import uuid from "uuid";
 import EthContract from "ethjs-contract";
+import Eth from "ethjs";
 import upsert from "../util/upsert";
 import withTimeout from "../util/withTimeout";
 import implementsAbi from "../util/implementsAbi";
@@ -17,7 +18,7 @@ const getConstant = async (web3, address, abi, method) => {
   const contract = new EthContract(web3);
   const instance = contract(abi).at(address);
   try {
-    const response = await instance[method]();
+    const response = await withTimeout(instance[method](), 5000);
     return response[0];
   } catch (err) {
     return null;
@@ -39,6 +40,13 @@ export const importAddress = async (db, address, customParams = {}) => {
       Crowdsale.abi,
       "rate"
     )).toNumber();
+    const weiRaised = await getConstant(
+      db.web3,
+      address,
+      Crowdsale.abi,
+      "weiRaised"
+    );
+    data.ethRaised = parseFloat(Eth.fromWei(weiRaised, "ether"));
     const tokenAddress = await getConstant(
       db.web3,
       address,
