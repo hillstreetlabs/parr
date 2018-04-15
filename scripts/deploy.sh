@@ -16,7 +16,7 @@ then
 fi
 
 echo "Starting server..."
-yarn start > logs/production.log 2> logs/production.log &
+node dist/index.js > logs/production.log 2> logs/production.log &
 
 echo $! > server.pid
 echo "Started server with pid $!"
