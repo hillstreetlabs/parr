@@ -19,6 +19,7 @@ export const addressJson = address => {
     type: "address",
     join_field: "address",
     address: address.address,
+    data: address.data,
     is_contract: address.bytecode != "0x",
     bytecode: address.bytecode,
     implements: address.implements || {},

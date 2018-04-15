@@ -1,4 +1,5 @@
 import uuid from "uuid";
+import EthContract from "ethjs-contract";
 import upsert from "../util/upsert";
 import withTimeout from "../util/withTimeout";
 import implementsAbi from "../util/implementsAbi";
@@ -6,26 +7,74 @@ import ERC20 from "../../contracts/ERC20.json";
 import ERC721 from "../../contracts/ERC721.json";
 import ERC721Original from "../../contracts/ERC721-original.json";
 import Crowdsale from "../../contracts/Crowdsale.json";
+import NonFungibleToken from "../../contracts/NonFungibleToken.json";
+import Metadata from "../../contracts/Metadata.json";
 
 const BATCH_SIZE = 50;
 const DELAY = 5000;
 
+const getConstant = async (web3, address, abi, method) => {
+  const contract = new EthContract(web3);
+  const instance = contract(abi).at(address);
+  try {
+    const response = await instance[method]();
+    return response[0];
+  } catch (err) {
+    return null;
+  }
+};
+
 export const importAddress = async (db, address, customParams = {}) => {
   const bytecode = await withTimeout(db.web3.getCode(address), 5000);
-  const addressJson = Object.assign(
-    {
-      address: address,
-      status: "downloaded",
-      bytecode: bytecode,
-      implements: {
-        erc20: implementsAbi(ERC20.abi, bytecode),
-        erc721: implementsAbi(ERC721.abi, bytecode),
-        erc721_original: implementsAbi(ERC721Original.abi, bytecode),
-        crowdsale: implementsAbi(Crowdsale.abi, bytecode)
-      }
+  let data = {};
+  if (implementsAbi(Metadata.abi, bytecode)) {
+    data.name = await getConstant(db.web3, address, Metadata.abi, "name");
+    data.symbol = await getConstant(db.web3, address, Metadata.abi, "symbol");
+  }
+  if (implementsAbi(Crowdsale.abi, bytecode)) {
+    data.wallet = await getConstant(db.web3, address, Crowdsale.abi, "wallet");
+    data.rate = (await getConstant(
+      db.web3,
+      address,
+      Crowdsale.abi,
+      "rate"
+    )).toNumber();
+    const tokenAddress = await getConstant(
+      db.web3,
+      address,
+      Crowdsale.abi,
+      "token"
+    );
+    if (tokenAddress) {
+      const name = await getConstant(
+        db.web3,
+        tokenAddress,
+        Metadata.abi,
+        "name"
+      );
+      const symbol = await getConstant(
+        db.web3,
+        tokenAddress,
+        Metadata.abi,
+        "symbol"
+      );
+      data.token = { name, symbol, address: tokenAddress };
+    }
+  }
+  const addressJson = {
+    address,
+    data,
+    status: "downloaded",
+    bytecode: bytecode,
+    implements: {
+      erc20: implementsAbi(ERC20.abi, bytecode),
+      erc721: implementsAbi(ERC721.abi, bytecode),
+      erc721_original: implementsAbi(ERC721Original.abi, bytecode),
+      crowdsale: implementsAbi(Crowdsale.abi, bytecode),
+      non_fungible_token: implementsAbi(NonFungibleToken.abi, bytecode)
     },
-    customParams
-  );
+    ...customParams
+  };
   const saved = await db.pg.transaction(async trx => {
     const savedAddress = await upsert(
       trx,
