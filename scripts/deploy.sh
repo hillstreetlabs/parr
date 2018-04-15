@@ -15,6 +15,9 @@ then
   fi
 fi
 
+echo "Migrating..."
+./node_modules/.bin/knex migrate:latest
+
 echo "Starting server..."
 node dist/index.js > logs/production.log 2> logs/production.log &
 
