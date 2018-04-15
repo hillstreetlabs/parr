@@ -30,6 +30,7 @@
     "etherscan-api": "^8.0.4",
     "ethjs": "^0.3.3",
     "ethjs-abi": "^0.2.1",
+    "ethjs-contract": "^0.1.9",
     "ethjs-provider-http": "^0.1.6",
     "ethjs-query": "^0.3.4",
     "express": "^4.13.3",

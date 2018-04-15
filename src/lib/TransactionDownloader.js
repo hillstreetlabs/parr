@@ -2,27 +2,19 @@ import uuid from "uuid";
 import Eth from "ethjs";
 import upsert from "../util/upsert";
 import withTimeout from "../util/withTimeout";
-import implementsAbi from "../util/implementsAbi";
-import ERC20 from "../../contracts/ERC20.json";
-import ERC721 from "../../contracts/ERC721.json";
-import ERC721Original from "../../contracts/ERC721-original.json";
 import { Line, LineBuffer, Clear } from "clui";
 import { observable, autorun } from "mobx";
 import createTimer from "../util/createTimer";
+import { importAddress } from "./AddressImporter";
 
 const BATCH_SIZE = 50;
 const DELAY = 5000;
 
 export default class TransactionDownloader {
   @observable transactionCount = 0;
-  @observable addressCount = 0;
   @observable errorCount = 0;
   @observable logCount = 0;
   errors = [];
-  contractCount = 0;
-  erc20Count = 0;
-  erc721Count = 0;
-  erc721OriginalCount = 0;
 
   constructor(db) {
     this.db = db;
@@ -105,8 +97,8 @@ export default class TransactionDownloader {
       timer.stop();
       timer = this.timer.time("postgres");
       await Promise.all([
-        this.importAddress(receipt.to || receipt.contractAddress),
-        this.importAddress(receipt.from)
+        importAddress(this.db, receipt.to || receipt.contractAddress),
+        importAddress(this.db, receipt.from)
       ]);
       const logs = await this.importLogs(
         receipt.to || receipt.contractAddress,
@@ -172,36 +164,6 @@ export default class TransactionDownloader {
     return saved;
   }
 
-  async importAddress(address) {
-    try {
-      const bytecode = await withTimeout(this.db.web3.getCode(address), 5000);
-      const addressJson = this.addressJson(address, bytecode);
-      const saved = await this.db.pg("addresses").insert(addressJson);
-      if (bytecode != "0x") this.contractCount++;
-      if (addressJson.implements.erc20) this.erc20Count++;
-      if (addressJson.implements.erc721) this.erc721Count++;
-      if (addressJson.implements.erc721_original) this.erc721OriginalCount++;
-      this.addressCount++;
-      return saved;
-    } catch (e) {
-      if (e.code == "23505") return true; // Silence duplicate key error
-      throw e;
-    }
-  }
-
-  addressJson(address, bytecode) {
-    return {
-      address: address,
-      status: "downloaded",
-      bytecode: bytecode,
-      implements: {
-        erc20: implementsAbi(ERC20.abi, bytecode),
-        erc721: implementsAbi(ERC721.abi, bytecode),
-        erc721_original: implementsAbi(ERC721Original.abi, bytecode)
-      }
-    };
-  }
-
   logJson(log, decoded = {}) {
     return {
       block_hash: log.blockHash,
@@ -252,7 +214,6 @@ export default class TransactionDownloader {
     // Speed info
     new Line(outputBuffer)
       .column("Transactions", 13)
-      .column("Addresses", 13)
       .column("Logs", 13)
       .column("Errors", 7)
       .fill()
@@ -265,33 +226,10 @@ export default class TransactionDownloader {
         13
       )
       .column(
-        `${this.addressCount} (${Math.floor(
-          this.addressCount / totalSeconds
-        )}/s)`,
-        13
-      )
-      .column(
         `${this.logCount} (${Math.floor(this.logCount / totalSeconds)}/s)`,
         13
       )
       .column(`${this.errorCount}`, 7)
-      .fill()
-      .store();
-    new Line(outputBuffer).fill().store();
-
-    // Contract info
-    new Line(outputBuffer)
-      .column("Contracts", 13)
-      .column("ERC20", 13)
-      .column("ERC721", 13)
-      .column("ERC721 (Old)", 13)
-      .fill()
-      .store();
-    new Line(outputBuffer)
-      .column(`${this.contractCount}`, 13)
-      .column(`${this.erc20Count}`, 13)
-      .column(`${this.erc721Count}`, 13)
-      .column(`${this.erc721OriginalCount}`, 13)
       .fill()
       .store();
     new Line(outputBuffer).fill().store();
