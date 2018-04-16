@@ -128,19 +128,13 @@ program
   .command("es:reset")
   .description("reset Elasticsearch")
   .action(async options => {
-    const { elasticsearch, pg } = initDb();
+    const { elasticsearch, pg, redis } = initDb();
     try {
       const receipt = await elasticsearch.reset();
-      await pg("blocks")
-        .where("status", "indexed")
-        .update("status", "downloaded");
-      await pg("transactions")
-        .where("status", "indexed")
-        .update("status", "downloaded");
-      await pg("addresses")
-        .where("status", "indexed")
-        .update("status", "downloaded");
+      // TODO: figure out a nice way of moving things to different queues
+      // so that we can reindex things here.
       pg.destroy();
+      redis.end(true);
       console.log(`Reset elasticsearch index`, receipt);
     } catch (err) {
       console.log(`Error`, err);

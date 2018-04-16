@@ -72,7 +72,6 @@ export const importAddress = async (db, address, customParams = {}) => {
   const addressJson = {
     address,
     data,
-    status: "downloaded",
     bytecode: bytecode,
     implements: {
       erc20: implementsAbi(ERC20.abi, bytecode),
@@ -146,12 +145,7 @@ export default class AddressImporter {
   async importAddresses() {
     try {
       await Promise.all(
-        this.addresses.map(address =>
-          importAddress(this.db, address, {
-            locked_by: null,
-            locked_at: null
-          })
-        )
+        this.addresses.map(address => importAddress(this.db, address))
       );
 
       console.log(`Imported ${this.addresses.length} addresses`);

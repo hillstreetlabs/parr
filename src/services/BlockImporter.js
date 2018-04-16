@@ -98,11 +98,6 @@ export default class BlockImporter {
     return {
       number: block.number.toNumber(),
       hash: block.hash,
-      status: "downloaded",
-      locked_by: null,
-      locked_at: null,
-      downloaded_by: this.pid,
-      downloaded_at: this.db.pg.fn.now(),
       data: {
         difficulty: block.difficulty.toString(10),
         gasLimit: block.gasLimit.toString(10),

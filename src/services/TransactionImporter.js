@@ -149,7 +149,6 @@ export default class TransactionImporter {
       block_hash: log.blockHash,
       transaction_hash: log.transactionHash,
       log_index: log.logIndex.toNumber(),
-      status: "downloaded",
       decoded: decoded,
       data: {
         address: log.address,
@@ -164,11 +163,6 @@ export default class TransactionImporter {
   transactionJson(transaction, receipt) {
     return {
       hash: transaction.hash,
-      status: "downloaded",
-      locked_by: null,
-      locked_at: null,
-      downloaded_by: this.pid,
-      downloaded_at: this.db.pg.fn.now(),
       to_address: transaction.to || receipt.contractAddress,
       from_address: transaction.from,
       receipt: {
