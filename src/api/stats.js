@@ -7,49 +7,75 @@ export default ({ config, db }) => {
   let api = Router();
 
   api.use("/", async (req, res) => {
-    const blockCount = await db.pg("blocks").count();
+    let blockCount = db.pg("blocks").count();
 
-    const blockCountByStatus = await db
+    let blockCountByStatus = db
       .pg("blocks")
       .select("status")
       .groupBy("status")
       .count();
 
-    const transactionCount = await db.pg("transactions").count();
+    let transactionCount = db.pg("transactions").count();
 
-    const transactionCountByStatus = await db
+    let transactionCountByStatus = db
       .pg("transactions")
       .select("status")
       .groupBy("status")
       .count();
 
-    const logCount = await db.pg("logs").count();
+    let logCount = db.pg("logs").count();
 
-    const logCountByStatus = await db
+    let logCountByStatus = db
       .pg("logs")
       .select("status")
       .groupBy("status")
       .count();
-    const logDecodedCount = await db
+    let logDecodedCount = db
       .pg("logs")
       .whereRaw("decoded::text <> '{}'::text")
       .count();
 
-    const addressCount = await db.pg("addresses").count();
-    const addressCountByStatus = await db
+    let addressCount = db.pg("addresses").count();
+    let addressCountByStatus = db
       .pg("addresses")
       .select("status")
       .groupBy("status")
       .count();
 
-    const contractCount = await db
+    let contractCount = db
       .pg("addresses")
       .whereNot("bytecode", "0x")
       .count();
 
-    const esStats = await db.elasticsearch.client.indices.stats({
+    let esStats = db.elasticsearch.client.indices.stats({
       index: INDICES.map(index => index.name)
     });
+
+    [
+      blockCount,
+      blockCountByStatus,
+      transactionCount,
+      transactionCountByStatus,
+      logCount,
+      logCountByStatus,
+      logDecodedCount,
+      addressCount,
+      addressCountByStatus,
+      contractCount,
+      esStats
+    ] = await Promise.all([
+      blockCount,
+      blockCountByStatus,
+      transactionCount,
+      transactionCountByStatus,
+      logCount,
+      logCountByStatus,
+      logDecodedCount,
+      addressCount,
+      addressCountByStatus,
+      contractCount,
+      esStats
+    ]);
 
     res.json({
       blocks: {
