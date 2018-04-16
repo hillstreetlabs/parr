@@ -89,6 +89,9 @@ export const importAddress = async (db, address, customParams = {}) => {
     addressJson,
     "(address)"
   );
+
+  // Note: this code is optimized to prevent deadlocks
+  // Update transactions by selecting their IDs and then setting status to downloaded
   const updatedTransactions = await db.pg
     .select()
     .from("transactions")

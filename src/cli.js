@@ -6,28 +6,20 @@ import "source-map-support/register";
 import program from "commander";
 import initDb from "./db";
 
-import BlockIndexer from "./lib/BlockIndexer";
-import TransactionIndexer from "./lib/TransactionIndexer";
-import AddressIndexer from "./lib/AddressIndexer";
-import BlockImporter from "./lib/BlockImporter";
-import BlockWatcher from "./lib/BlockWatcher";
-import BlockDownloader from "./lib/BlockDownloader";
-import TransactionDownloader from "./lib/TransactionDownloader";
-import InternalTransactionDownloader from "./lib/InternalTransactionDownloader";
-import AddressImporter from "./lib/AddressImporter";
+import BlockAdder from "./services/BlockAdder";
+import BlockWatcher from "./services/BlockWatcher";
+import BlockImporter from "./services/BlockImporter";
+import BlockIndexer from "./services/BlockIndexer";
+
+import TransactionImporter from "./services/TransactionImporter";
+import TransactionIndexer from "./services/TransactionIndexer";
+
+import AddressImporter from "./services/AddressImporter";
+import AddressIndexer from "./services/AddressIndexer";
 
 program
-  .command("watch")
-  .description("watch for new blocks and import them")
-  .action(async options => {
-    const db = initDb();
-    const watcher = new BlockWatcher(db);
-    watcher.run();
-  });
-
-program
-  .command("import")
-  .description("import block number(s) from Ethereum to Parr")
+  .command("blocks:add")
+  .description("Add blocks from Ethereum to Parr")
   .option("-B, --block <n>", "Block number to parse", parseInt)
   .option("-F, --from <n>", "Block number to start parsing at", parseInt)
   .option("-T, --to <n>", "Block number to parse up to", parseInt)
@@ -35,25 +27,23 @@ program
   .option("-A, --all", "Parse all blocks")
   .action(async options => {
     const db = initDb();
-    const importer = new BlockImporter(db);
+    const adder = new BlockAdder(db);
     try {
       const latest = (await db.web3.blockNumber()).toNumber() - 6;
       const promises = [];
-      if (options.block) promises.push(importer.importBlock(options.block));
+      if (options.block) promises.push(adder.importBlock(options.block));
       if (options.last) {
-        promises.push(
-          importer.importBlocks(latest - (options.last - 1), latest)
-        );
+        promises.push(adder.run(latest - (options.last - 1), latest));
       }
       if (options.from || options.to) {
         const fromBlock = options.from || 1;
         const toBlock = options.to || latest;
         if (toBlock < fromBlock)
           throw "toBlock must be greater than or equal to fromBlock";
-        promises.push(importer.importBlocks(fromBlock, toBlock));
+        promises.push(adder.run(fromBlock, toBlock));
       }
       if (options.all) {
-        promises.push(importer.importBlocks(1, latest));
+        promises.push(adder.run(1, latest));
       }
       await Promise.all(promises);
       db.pg.destroy();
@@ -64,47 +54,26 @@ program
   });
 
 program
-  .command("downloadBlocks")
-  .description("Download block data from Ethereum ")
+  .command("blocks:import")
+  .description("Import block data from Ethereum ")
   .action(async options => {
     const db = initDb();
-    const downloader = new BlockDownloader(db);
-    downloader.run();
-    process.on("SIGINT", () => downloader.exit());
+    const importer = new BlockImporter(db);
+    importer.run();
+    process.on("SIGINT", () => importer.exit());
   });
 
 program
-  .command("downloadTransactions")
-  .description("download transaction(s) from Ethereum to Parr")
+  .command("blocks:watch")
+  .description("Watch for new blocks and add them")
   .action(async options => {
     const db = initDb();
-    const downloader = new TransactionDownloader(db);
-    downloader.run();
-    process.on("SIGINT", () => downloader.exit());
+    const watcher = new BlockWatcher(db);
+    watcher.run();
   });
 
 program
-  .command("downloadInternalTransactions")
-  .description("download internal transaction(s) from Ethereum to Parr")
-  .action(async options => {
-    const db = initDb();
-    const downloader = new InternalTransactionDownloader(db);
-    downloader.run();
-    process.on("SIGINT", () => downloader.exit());
-  });
-
-program
-  .command("indexTransactions")
-  .description("index transaction(s) from Parr PG instance to Parr ES instance")
-  .action(async options => {
-    const db = initDb();
-    const indexer = new TransactionIndexer(db);
-    indexer.run();
-    process.on("SIGINT", () => indexer.exit());
-  });
-
-program
-  .command("indexBlocks")
+  .command("blocks:index")
   .description("index block(s) from Parr PG instance to Parr ES instance")
   .action(async options => {
     const db = initDb();
@@ -114,25 +83,43 @@ program
   });
 
 program
-  .command("indexAddresses")
+  .command("transactions:import")
+  .description("Import transaction(s) from Ethereum to Parr")
+  .action(async options => {
+    const db = initDb();
+    const importer = new TransactionImporter(db);
+    importer.run();
+    process.on("SIGINT", () => importer.exit());
+  });
+
+program
+  .command("transactions:index")
+  .description("index transaction(s) from Parr PG instance to Parr ES instance")
+  .action(async options => {
+    const db = initDb();
+    const indexer = new TransactionIndexer(db);
+    indexer.run();
+    process.on("SIGINT", () => indexer.exit());
+  });
+
+program
+  .command("addresses:import")
+  .description("Import address(es) and check against known ABIs")
+  .action(async options => {
+    const db = initDb();
+    const importer = new AddressImporter(db);
+    importer.run();
+    process.on("SIGINT", () => importer.exit());
+  });
+
+program
+  .command("addresses:index")
   .description("index address(es) from Parr PG instance to Parr ES instance")
   .action(async options => {
     const db = initDb();
     const indexer = new AddressIndexer(db);
     indexer.run();
     process.on("SIGINT", () => indexer.exit());
-  });
-
-program
-  .command("importAddresses")
-  .description(
-    "import address(es) marked as stale and check against known ABIs"
-  )
-  .action(async options => {
-    const db = initDb();
-    const importer = new AddressImporter(db);
-    importer.run();
-    process.on("SIGINT", () => importer.exit());
   });
 
 program

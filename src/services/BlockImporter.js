@@ -7,11 +7,11 @@ import withTimeout from "../util/withTimeout";
 const BATCH_SIZE = 20;
 const DELAY = 5000;
 
-export default class BlockDownloader {
+export default class BlockImporter {
   constructor(db, options) {
     this.db = db;
     this.timer;
-    this.pid = `BlockDownloader@${uuid.v4()}`;
+    this.pid = `BlockImporter@${uuid.v4()}`;
   }
 
   async run() {
@@ -20,7 +20,7 @@ export default class BlockDownloader {
       await this.importBlocks(blockHashes);
       this.run();
     } else {
-      console.log(`No imported blocks found, waiting ${DELAY}ms`);
+      console.log(`No blocks found to import, waiting ${DELAY}ms`);
       this.timer = setTimeout(() => this.run(), DELAY);
     }
   }
@@ -90,7 +90,7 @@ export default class BlockDownloader {
         // Silence duplicate errors
       }
       console.log(
-        `Downloaded block: ${block.number.toString()}\tHash: ${blockHash}`
+        `Imported block: ${block.number.toString()}\tHash: ${blockHash}`
       );
       return true;
     } catch (err) {

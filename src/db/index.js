@@ -1,9 +1,9 @@
 import HttpProvider from "ethjs-provider-http";
 import Eth from "ethjs-query";
-import ES from "./lib/ES";
+import ES from "./ES";
 import Etherscan from "etherscan-api";
 import Knex from "knex";
-import knexConfig from "../knexfile";
+import knexConfig from "../../knexfile";
 
 // Returns an object with references to various databases
 export default () => {

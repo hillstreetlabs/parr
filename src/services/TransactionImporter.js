@@ -10,7 +10,7 @@ import { importAddress } from "./AddressImporter";
 const BATCH_SIZE = 50;
 const DELAY = 5000;
 
-export default class TransactionDownloader {
+export default class TransactionImporter {
   @observable transactionCount = 0;
   @observable errorCount = 0;
   @observable logCount = 0;
@@ -18,7 +18,7 @@ export default class TransactionDownloader {
 
   constructor(db) {
     this.db = db;
-    this.pid = `TransactionDownloader@${uuid.v4()}`;
+    this.pid = `TransactionImporter@${uuid.v4()}`;
     this.timer = createTimer();
 
     this.stopPrintingStats = autorun(() => this.printStats());
@@ -32,7 +32,7 @@ export default class TransactionDownloader {
       await this.importTransactions(transactions);
       this.run();
     } else {
-      console.log(`No imported transactions found, waiting ${DELAY}ms`);
+      console.log(`No transactions found to import, waiting ${DELAY}ms`);
       this.timeout = setTimeout(() => this.run(), DELAY);
     }
   }
@@ -96,10 +96,10 @@ export default class TransactionDownloader {
 
       timer.stop();
       timer = this.timer.time("postgres");
-      await Promise.all([
-        importAddress(this.db, receipt.to || receipt.contractAddress),
-        importAddress(this.db, receipt.from)
-      ]);
+      // await Promise.all([
+      //   importAddress(this.db, receipt.to || receipt.contractAddress),
+      //   importAddress(this.db, receipt.from)
+      // ]);
       const logs = await this.importLogs(
         receipt.to || receipt.contractAddress,
         receipt.logs

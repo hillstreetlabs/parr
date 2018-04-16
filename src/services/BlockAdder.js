@@ -4,13 +4,13 @@ import withTimeout from "../util/withTimeout";
 const BATCH_SIZE = 30;
 const MAX_FAILURE_ATTEMPTS = 10;
 
-export default class BlockImporter {
+export default class BlockAdder {
   constructor(db) {
     this.db = db;
     this.failedBlockNumbers = []; // Record of blocks that failed to import
   }
 
-  async importBlocks(fromBlock, toBlock) {
+  async run(fromBlock, toBlock) {
     let batchStartBlock = fromBlock;
     let batchEndBlock = Math.min(batchStartBlock + BATCH_SIZE - 1, toBlock);
     while (batchStartBlock <= toBlock) {
@@ -53,12 +53,12 @@ export default class BlockImporter {
       };
       const saved = await upsert(this.db.pg, "blocks", blockJson, "(hash)");
       console.log(
-        `Imported block: ${block.number.toString()}\tHash: ${block.hash}`
+        `Added block: ${block.number.toString()}\tHash: ${block.hash}`
       );
       return saved;
     } catch (err) {
       this.failedBlockNumbers.push(blockNumber);
-      console.log(`Failed to import block ${blockNumber}`);
+      console.log(`Failed to add block ${blockNumber}`);
       return true;
     }
   }
