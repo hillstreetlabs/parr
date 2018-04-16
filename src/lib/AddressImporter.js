@@ -83,28 +83,22 @@ export const importAddress = async (db, address, customParams = {}) => {
     },
     ...customParams
   };
-  const saved = await db.pg.transaction(async trx => {
-    const savedAddress = await upsert(
-      trx,
-      "addresses",
-      addressJson,
-      "(address)"
-    );
-    const updatedFromTransactions = await trx
-      .select()
-      .from("transactions")
-      .where({ from_address: address, status: "indexed" })
-      .returning("hash")
-      .update({ status: "downloaded" });
-    const updatedToTransactions = await trx
-      .select()
-      .from("transactions")
-      .where({ to_address: address, status: "indexed" })
-      .returning("hash")
-      .update({ status: "downloaded" });
-    return savedAddress;
-  });
-  return saved;
+  const savedAddress = await upsert(
+    db.pg,
+    "addresses",
+    addressJson,
+    "(address)"
+  );
+  const updatedTransactions = await db.pg
+    .select()
+    .from("transactions")
+    .where({ status: "indexed" })
+    .where(t =>
+      t.where({ to_address: address }).orWhere({ from_address: address })
+    )
+    .returning("hash")
+    .update({ status: "downloaded" });
+  return savedAddress;
 };
 
 export default class AddressImporter {
