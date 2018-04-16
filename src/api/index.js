@@ -15,7 +15,7 @@ export default ({ config, db }) => {
       });
       res.json({ response });
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      res.status(400).json({ response: error });
     }
   });
 
@@ -27,7 +27,7 @@ export default ({ config, db }) => {
       });
       res.json({ response });
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      res.status(400).json({ response: error });
     }
   });
 
@@ -53,7 +53,7 @@ export default ({ config, db }) => {
       const response = await db.elasticsearch.client.search(query);
       res.json({ response });
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      res.status(400).json({ response: error });
     }
   });
 
