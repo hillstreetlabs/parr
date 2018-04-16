@@ -90,17 +90,23 @@ export const importAddress = async (db, address, customParams = {}) => {
     "(address)"
   );
 
-  // Note: this code is optimized to prevent deadlocks
-  // Update transactions by selecting their IDs and then setting status to downloaded
-  const updatedTransactions = await db.pg
-    .select()
+  // Add address to index queue
+  await db.redis.saddAsync("addresses:to_index", address);
+
+  // Add affected transactions to index queue
+  const affectedTransactions = await db.pg
+    .select("hash")
     .from("transactions")
-    .where({ status: "indexed" })
     .where(t =>
       t.where({ to_address: address }).orWhere({ from_address: address })
-    )
-    .returning("hash")
-    .update({ status: "downloaded" });
+    );
+  const affectedTransactionHashes = affectedTransactions.map(tx => tx.hash);
+  if (affectedTransactionHashes.length > 0)
+    await db.redis.saddAsync(
+      "transactions:to_index",
+      affectedTransactionHashes
+    );
+
   return savedAddress;
 };
 
@@ -112,9 +118,11 @@ export default class AddressImporter {
   }
 
   async run() {
-    let addresses = await this.getAddresses();
-    if (addresses.length > 0) {
-      await this.importAddresses(addresses);
+    if (this.isExiting) return;
+
+    this.addresses = await this.getAddresses();
+    if (this.addresses.length > 0) {
+      await this.importAddresses();
       this.run();
     } else {
       console.log(`No stale addresses found, waiting ${DELAY}ms`);
@@ -123,6 +131,8 @@ export default class AddressImporter {
   }
 
   async exit() {
+    this.isExiting = true;
+
     console.log("Exiting...");
     clearTimeout(this.timer);
     await this.unlockAddresses();
@@ -130,36 +140,21 @@ export default class AddressImporter {
   }
 
   getAddresses() {
-    return this.db.pg.transaction(async trx => {
-      const addresses = await trx
-        .select()
-        .from("addresses")
-        .where({ status: "stale", locked_by: null })
-        .limit(BATCH_SIZE);
-      const lockedAddresses = await trx
-        .select()
-        .from("addresses")
-        .whereIn("address", addresses.map(address => address.address))
-        .returning("address")
-        .update({
-          locked_by: this.pid,
-          locked_at: this.db.pg.fn.now()
-        });
-      return addresses;
-    });
+    return this.db.redis.spopAsync("addresses:to_import", BATCH_SIZE);
   }
 
-  async importAddresses(addresses) {
+  async importAddresses() {
     try {
       await Promise.all(
-        addresses.map(address =>
-          importAddress(this.db, address.address, {
+        this.addresses.map(address =>
+          importAddress(this.db, address, {
             locked_by: null,
             locked_at: null
           })
         )
       );
-      console.log(`Imported ${addresses.length} addresses`);
+
+      console.log(`Imported ${this.addresses.length} addresses`);
       return true;
     } catch (err) {
       console.log(`Failed to import addresses`, err);
@@ -168,15 +163,8 @@ export default class AddressImporter {
   }
 
   async unlockAddresses() {
-    const unlocked = await this.db.pg
-      .select()
-      .from("addresses")
-      .where({ locked_by: this.pid })
-      .returning("address")
-      .update({
-        locked_by: null,
-        locked_at: null
-      });
-    console.log(`Unlocked ${unlocked.length} addresses`);
+    if (this.addresses.length > 0)
+      await this.db.redis.saddAsync("addresses:to_import", this.addresses);
+    console.log(`Unlocked ${this.addresses.length} addresses.`);
   }
 }

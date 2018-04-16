@@ -12,12 +12,12 @@ export default class AddressIndexer {
   }
 
   async run() {
-    let addresses = await this.getAddresses();
-    if (addresses.length > 0) {
-      await this.indexAddresses(addresses);
+    this.addresses = await this.getAddresses();
+    if (this.addresses.length > 0) {
+      await this.indexAddresses();
       this.run();
     } else {
-      console.log(`No downloaded addresses found, waiting ${DELAY}ms`);
+      console.log(`No addresses found to index, waiting ${DELAY}ms`);
       this.timer = setTimeout(() => this.run(), DELAY);
     }
   }
@@ -29,46 +29,23 @@ export default class AddressIndexer {
     process.exit();
   }
 
-  getAddresses() {
-    return this.db.pg.transaction(async trx => {
-      const addresses = await trx
-        .select()
-        .from("addresses")
-        .where({ status: "downloaded", locked_by: null })
-        .limit(BATCH_SIZE);
-      const lockedAddresses = await trx
-        .select()
-        .from("addresses")
-        .whereIn("address", addresses.map(address => address.address))
-        .returning("address")
-        .update({
-          locked_by: this.pid,
-          locked_at: this.db.pg.fn.now()
-        });
-      return addresses;
-    });
+  async getAddresses() {
+    const addressHashes = await this.db.redis.spopAsync(
+      "addresses:to_index",
+      BATCH_SIZE
+    );
+    return this.db.pg.from("addresses").whereIn("address", addressHashes);
   }
 
-  async indexAddresses(addresses) {
+  async indexAddresses() {
     try {
-      const addressesJson = addresses.map(address => addressJson(address));
+      const addressesJson = this.addresses.map(address => addressJson(address));
       const indexed = await this.db.elasticsearch.bulkIndex(
         "parr_addresses",
         addressesJson
       );
-      if (indexed.errors) throw JSON.stringify(indexed);
-      const updated = await this.db
-        .pg("addresses")
-        .whereIn("address", addresses.map(address => address.address))
-        .returning("address")
-        .update({
-          status: "indexed",
-          locked_by: null,
-          locked_at: null,
-          indexed_by: this.pid,
-          indexed_at: this.db.pg.fn.now()
-        });
-      console.log(`Indexed ${updated.length} addresses`);
+      if (indexed.errors) throw new Error(JSON.stringify(indexed));
+      console.log(`Indexed ${this.addresses.length} addresses`);
       return true;
     } catch (err) {
       console.log(`Failed to index addresses`, err);
@@ -77,15 +54,11 @@ export default class AddressIndexer {
   }
 
   async unlockAddresses() {
-    const unlocked = await this.db.pg
-      .select()
-      .from("addresses")
-      .where({ locked_by: this.pid })
-      .returning("address")
-      .update({
-        locked_by: null,
-        locked_at: null
-      });
-    console.log(`Unlocked ${unlocked.length} addresses`);
+    if (this.addresses.length > 0)
+      await this.db.redis.saddAsync(
+        "addresses:to_index",
+        this.addresses.map(addr => addr.address)
+      );
+    console.log(`Unlocked ${this.addresses.length} addresses`);
   }
 }

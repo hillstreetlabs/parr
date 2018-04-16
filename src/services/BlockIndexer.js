@@ -12,9 +12,9 @@ export default class BlockIndexer {
   }
 
   async run() {
-    let blocks = await this.getBlocks();
-    if (blocks.length > 0) {
-      await this.indexBlocks(blocks);
+    this.blocks = await this.getBlocks();
+    if (this.blocks.length > 0) {
+      await this.indexBlocks();
       this.run();
     } else {
       console.log(`No indexable blocks found, waiting ${DELAY}ms`);
@@ -29,63 +29,36 @@ export default class BlockIndexer {
     process.exit();
   }
 
-  getBlocks() {
-    return this.db.pg.transaction(async trx => {
-      const blocks = await trx
-        .select()
-        .from("blocks")
-        .where({ status: "downloaded", locked_by: null })
-        .limit(BATCH_SIZE);
-      const hashes = await trx
-        .select()
-        .from("blocks")
-        .whereIn("hash", blocks.map(block => block.hash))
-        .returning("hash")
-        .update({
-          locked_by: this.pid,
-          locked_at: this.db.pg.fn.now()
-        });
-      return blocks;
-    });
+  async unlockBlocks() {
+    if (this.blocks.length > 0)
+      await this.db.redis.saddAsync(
+        "blocks:to_index",
+        this.blocks.map(tx => tx.hash)
+      );
+    console.log(`Unlocked ${this.blocks.length} blocks`);
   }
 
-  async indexBlocks(blocks) {
+  async getBlocks() {
+    const blockHashes = await this.db.redis.spopAsync(
+      "blocks:to_index",
+      BATCH_SIZE
+    );
+    return this.db.pg.from("blocks").whereIn("hash", blockHashes);
+  }
+
+  async indexBlocks() {
     try {
-      const blocksJson = blocks.map(block => blockJson(block));
+      const blocksJson = this.blocks.map(block => blockJson(block));
       const indexed = await this.db.elasticsearch.bulkIndex(
         "parr_blocks_transactions",
         blocksJson
       );
-      if (indexed.errors) throw "Failed to index blocks";
-      const updated = await this.db
-        .pg("blocks")
-        .whereIn("hash", blocks.map(block => block.hash))
-        .returning("number")
-        .update({
-          status: "indexed",
-          locked_by: null,
-          locked_at: null,
-          indexed_by: this.pid,
-          indexed_at: this.db.pg.fn.now()
-        });
-      console.log(`Indexed ${updated.length} blocks: ${updated.join(", ")}`);
+      if (indexed.errors) throw new Error(JSON.stringify(indexed));
+      console.log(`Indexed ${this.blocks.length} blocks`);
       return true;
     } catch (err) {
       console.log(`Failed to index blocks`, err);
       return this.unlockBlocks();
     }
-  }
-
-  async unlockBlocks() {
-    const unlocked = await this.db.pg
-      .select()
-      .from("blocks")
-      .where({ locked_by: this.pid })
-      .returning("hash")
-      .update({
-        locked_by: null,
-        locked_at: null
-      });
-    console.log(`Unlocked ${unlocked.length} blocks`);
   }
 }

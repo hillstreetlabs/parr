@@ -12,12 +12,15 @@ export default class BlockImporter {
     this.db = db;
     this.timer;
     this.pid = `BlockImporter@${uuid.v4()}`;
+    this.currentBlockHashes = [];
   }
 
   async run() {
-    let blockHashes = await this.getBlockHashes();
-    if (blockHashes.length > 0) {
-      await this.importBlocks(blockHashes);
+    if (this.isExiting) return;
+
+    this.currentBlockHashes = await this.getBlockHashes();
+    if (this.currentBlockHashes.length > 0) {
+      await this.importBlocks();
       this.run();
     } else {
       console.log(`No blocks found to import, waiting ${DELAY}ms`);
@@ -26,41 +29,26 @@ export default class BlockImporter {
   }
 
   async exit() {
+    this.isExiting = true;
+
     console.log("Exiting...");
     clearTimeout(this.timer);
-    const unlocked = await this.db.pg
-      .select()
-      .from("blocks")
-      .where({ locked_by: this.pid })
-      .returning("hash")
-      .update({ locked_by: null, locked_at: null });
-    console.log(`Unlocked ${unlocked.length} blocks`);
+    if (this.currentBlockHashes.length > 0)
+      await this.db.redis.saddAsync(
+        "blocks:to_import",
+        this.currentBlockHashes
+      );
+    console.log(`Unlocked ${this.currentBlockHashes.length} blocks`);
     process.exit();
   }
 
   getBlockHashes() {
-    return this.db.pg.transaction(async trx => {
-      const blocks = await trx
-        .select()
-        .from("blocks")
-        .where({ status: "imported", locked_by: null })
-        .limit(BATCH_SIZE);
-      const hashes = await trx
-        .select()
-        .from("blocks")
-        .whereIn("hash", blocks.map(block => block.hash))
-        .returning("hash")
-        .update({
-          locked_by: this.pid,
-          locked_at: this.db.pg.fn.now()
-        });
-      return hashes;
-    });
+    return this.db.redis.spopAsync("blocks:to_import", BATCH_SIZE);
   }
 
-  async importBlocks(blockHashes) {
+  async importBlocks() {
     await Promise.all(
-      blockHashes.map(blockHash => {
+      this.currentBlockHashes.map(blockHash => {
         return this.importBlock(blockHash);
       })
     );
@@ -78,57 +66,32 @@ export default class BlockImporter {
         this.blockJson(block),
         "(hash)"
       );
-      const transactionsJson = block.transactions.map(tx =>
-        this.transactionJson(tx)
-      );
-      let savedTransactions;
-      try {
-        savedTransactions = await this.db
-          .pg("transactions")
-          .insert(transactionsJson);
-      } catch (err) {
-        // Silence duplicate errors
-      }
+      const transactionHashes = block.transactions.map(tx => tx.hash);
+      if (transactionHashes.length > 0)
+        await this.db.redis.saddAsync(
+          "transactions:to_import",
+          transactionHashes
+        );
+      await this.db.redis.saddAsync("blocks:to_index", blockHash);
       console.log(
-        `Imported block: ${block.number.toString()}\tHash: ${blockHash}`
+        `Imported block: ${block.number.toString()}\tHash: ${blockHash}\tAdded ${
+          transactionHashes.length
+        } txns`
       );
       return true;
     } catch (err) {
       console.log(`Failed to import block ${blockHash}, un-locking...`);
-      return this.unlockBlock(blockHash);
+      await this.unlockBlock(blockHash);
+      return false;
     }
   }
 
   async unlockBlock(blockHash) {
-    const unlocked = await this.db
-      .pg("blocks")
-      .where("hash", blockHash)
-      .returning("hash")
-      .update({ locked_by: null, locked_at: null });
-    return unlocked;
+    await this.db.redis.sadd("blocks:to_import", blockHash);
   }
 
   decodeTimeField(field) {
     return new Date(field.mul(new Eth.BN(1000)).toNumber(10)).toISOString();
-  }
-
-  transactionJson(transaction) {
-    return {
-      hash: transaction.hash,
-      block_hash: transaction.blockHash,
-      status: "imported",
-      from_address: transaction.from,
-      to_address: transaction.to,
-      data: {
-        blockNumber: transaction.blockNumber.toNumber(),
-        gas: transaction.gas.toString(10),
-        gasPrice: Eth.fromWei(transaction.gasPrice, "ether"),
-        nonce: transaction.nonce.toString(10),
-        transactionIndex: transaction.transactionIndex.toNumber(),
-        value: Eth.fromWei(transaction.value, "ether"),
-        logs: []
-      }
-    };
   }
 
   blockJson(block) {

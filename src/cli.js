@@ -47,9 +47,11 @@ program
       }
       await Promise.all(promises);
       db.pg.destroy();
+      db.redis.end(true);
     } catch (err) {
       console.log("Encountered error, shutting down");
       db.pg.destroy();
+      db.redis.end(true);
     }
   });
 

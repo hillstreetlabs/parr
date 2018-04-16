@@ -40,26 +40,20 @@ export default class BlockAdder {
     }
   }
 
+  // Adds the block hash of a particular block to redis
   async importBlock(blockNumber) {
     try {
       const block = await withTimeout(
         this.db.web3.getBlockByNumber(blockNumber, true),
         5000
       );
-      const blockJson = {
-        number: block.number.toNumber(),
-        hash: block.hash,
-        status: "imported"
-      };
-      const saved = await upsert(this.db.pg, "blocks", blockJson, "(hash)");
+      await this.db.redis.saddAsync("blocks:to_import", block.hash);
       console.log(
         `Added block: ${block.number.toString()}\tHash: ${block.hash}`
       );
-      return saved;
     } catch (err) {
       this.failedBlockNumbers.push(blockNumber);
-      console.log(`Failed to add block ${blockNumber}`);
-      return true;
+      console.log(`Failed to add block ${blockNumber}`, err);
     }
   }
 }
