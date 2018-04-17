@@ -48,42 +48,6 @@ export const INDICES = [
                 type: "keyword",
                 normalizer: "lowercase_normalizer"
               },
-              block: {
-                type: "object",
-                properties: {
-                  parent_hash: {
-                    type: "keyword",
-                    normalizer: "lowercase_normalizer"
-                  }
-                }
-              },
-              transaction: {
-                type: "object",
-                properties: {
-                  to: {
-                    type: "object",
-                    properties: {
-                      address: {
-                        type: "keyword",
-                        normalizer: "lowercase_normalizer"
-                      }
-                    }
-                  },
-                  from: {
-                    type: "object",
-                    properties: {
-                      address: {
-                        type: "keyword",
-                        normalizer: "lowercase_normalizer"
-                      }
-                    }
-                  },
-                  hash: {
-                    type: "keyword",
-                    normalizer: "lowercase_normalizer"
-                  }
-                }
-              }
               value: { type: "double" }
             }
           }

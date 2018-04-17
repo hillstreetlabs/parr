@@ -89,12 +89,6 @@ export const internalTransactionJson = internalTransaction => {
   return {
     from: internalTransaction.from_address,
     to: internalTransaction.to_address,
-    block: internalTransaction.block
-      ? blockJson(internalTransaction.block)
-      : {},
-    transaction: internalTransaction.transaction
-      ? transactionJson(internalTransaction.transaction)
-      : {},
     timestamp: internalTransaction.data.timestamp,
     value: internalTransaction.data.value,
     contract_address: internalTransaction.data.contractAddress,
