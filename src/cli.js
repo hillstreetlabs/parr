@@ -6,6 +6,7 @@ import "source-map-support/register";
 import program from "commander";
 import initDb from "./db";
 import inBatches from "./util/inBatches";
+import { Spinner } from "clui";
 
 import BlockAdder from "./services/BlockAdder";
 import BlockWatcher from "./services/BlockWatcher";
@@ -144,12 +145,83 @@ program
   .action(async options => {
     const { elasticsearch, pg, redis } = initDb();
     try {
+      // receipt will be an array of index names (i.e. ["parr_monitoring"])
       const receipt = await elasticsearch.reset(options.index);
       console.log(`Reset elasticsearch indices: ${receipt.join(", ")}`);
-      // TODO: figure out a nice way of moving things to different queues
-      // so that we can reindex things here.
+      // Add blocks to redis for re-indexing
+      let blocksResetCount = 0;
+      if (receipt.includes("parr_blocks_transactions")) {
+        const blockCounter = new Spinner(`Reset ${blocksResetCount} blocks`);
+        blockCounter.start();
+        await inBatches(
+          pg("blocks"),
+          async blocks => {
+            await redis.saddAsync(
+              "blocks:to_index",
+              blocks.map(block => block.hash)
+            );
+            blocksResetCount += blocks.length;
+            blockCounter.message(`Reset ${blocksResetCount} blocks`);
+          },
+          5000
+        );
+        blockCounter.stop();
+      }
+      console.log(`Reset ${blocksResetCount} blocks for re-indexing`);
+      // Add transactions to redis for re-indexing
+      let transactionsResetCount = 0;
+      if (
+        receipt.includes("parr_blocks_transactions") ||
+        receipt.includes("parr_addresses")
+      ) {
+        const transactionCounter = new Spinner(
+          `Reset ${transactionsResetCount} transactions`
+        );
+        transactionCounter.start();
+        await inBatches(
+          pg("transactions"),
+          async transactions => {
+            await redis.saddAsync(
+              "transactions:to_index",
+              transactions.map(transaction => transaction.hash)
+            );
+            transactionsResetCount += transactions.length;
+            transactionCounter.message(
+              `Reset ${transactionsResetCount} transactions`
+            );
+          },
+          5000
+        );
+        transactionCounter.stop();
+      }
+      console.log(
+        `Reset ${transactionsResetCount} transactions for re-indexing`
+      );
+      // Add addresses to redis for re-indexing
+      let addressesResetCount = 0;
+      if (receipt.includes("parr_addresses")) {
+        const addressCounter = new Spinner(
+          `Reset ${addressesResetCount} addresses`
+        );
+        addressCounter.start();
+        await inBatches(
+          pg("addresses"),
+          async addresses => {
+            await redis.saddAsync(
+              "addresses:to_index",
+              addresses.map(address => address.address)
+            );
+            addressesResetCount += addresses.length;
+            addressCounter.message(`Reset ${addressesResetCount} addresses`);
+          },
+          5000
+        );
+        addressCounter.stop();
+      }
+      console.log(`Reset ${addressesResetCount} addresses for re-indexing`);
       pg.destroy();
       redis.end(true);
+      console.log("I KILLED REDIS");
     } catch (err) {
       console.log(`Error`, err);
     }

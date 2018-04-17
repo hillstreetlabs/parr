@@ -9,12 +9,12 @@ const runBatch = async (query, func, batchSize, batchScrollId) => {
   const rows = await getRows(query, batchSize, batchScrollId);
   if (rows.length > 0) {
     await func(rows);
-    runBatch(query, func, batchSize, rows[rows.length - 1].id);
+    return runBatch(query, func, batchSize, rows[rows.length - 1].id);
   } else {
     return true;
   }
 };
 
-export default (query, func, batchSize = 200) => {
+export default async (query, func, batchSize = 200) => {
   return runBatch(query, func, batchSize, 0);
 };
