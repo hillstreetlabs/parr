@@ -6,10 +6,10 @@ import { Line, LineBuffer, Clear } from "clui";
 import { observable, autorun } from "mobx";
 import createTimer from "../util/createTimer";
 import { importAddress } from "./AddressImporter";
+import genericEventsAbi from "../../contracts/Events.json";
 
 const BATCH_SIZE = 50;
 const DELAY = 5000;
-const GENERIC_EVENTS_ABI = require("../../contracts/Events.json");
 
 export default class TransactionImporter {
   @observable transactionCount = 0;
