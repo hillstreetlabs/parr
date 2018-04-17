@@ -30,8 +30,12 @@ export const addressJson = address => {
 
 export const transactionJson = transaction => {
   const type = transaction.type || "transaction";
+  const timestamp = transaction.block
+    ? transaction.block.data.timestamp
+    : transaction.timestamp;
   return {
-    type: type,
+    type,
+    timestamp,
     routing: transaction.routing,
     join_field: transaction.join_field,
     contract_address: transaction.receipt.contractAddress,
@@ -45,7 +49,11 @@ export const transactionJson = transaction => {
     hash: transaction.hash,
     id: `${type}:${transaction.hash}`,
     internal_transactions: (transaction.internalTransactions || []).map(
-      internalTransaction => internalTransactionJson(internalTransaction)
+      internalTransaction => {
+        return internalTransactionJson(
+          Object.assign(internalTransaction, { timestamp })
+        );
+      }
     ),
     logs: (transaction.logs || []).map(log => logJson(log)),
     nonce: transaction.data.nonce,
