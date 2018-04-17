@@ -3,12 +3,22 @@ import Elasticsearch from "elasticsearch";
 export const INDICES = [
   {
     name: "parr_blocks_transactions",
+    settings: {
+      analysis: {
+        normalizer: {
+          lowercase_normalizer: {
+            type: "custom",
+            filter: ["lowercase"]
+          }
+        }
+      }
+    },
     mappings: {
       _doc: {
         properties: {
           join_field: { type: "join", relations: { block: "transaction" } },
           type: { type: "keyword" },
-          hash: { type: "keyword" },
+          hash: { type: "keyword", normalizer: "lowercase_normalizer" },
           to: { type: "object" },
           from: { type: "object" },
           value: { type: "double" }
@@ -32,6 +42,12 @@ export const INDICES = [
             max_gram: 8,
             token_chars: ["letter", "digit"]
           }
+        },
+        normalizer: {
+          lowercase_normalizer: {
+            type: "custom",
+            filter: ["lowercase"]
+          }
         }
       }
     },
@@ -43,6 +59,7 @@ export const INDICES = [
             relations: { address: ["to_transaction", "from_transaction"] }
           },
           type: { type: "keyword" },
+          address: { type: "keyword", normalizer: "lowercase_normalizer" },
           value: { type: "double" },
           implements: { type: "object" },
           bytecode: { type: "text", analyzer: "bytecode_analyzer" }
