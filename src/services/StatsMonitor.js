@@ -1,5 +1,6 @@
 import { action, computed, observable } from "mobx";
 import withTimeout from "../util/withTimeout";
+import inBatches from "../util/inBatches";
 
 const BATCH_SIZE = 200;
 const DELAY = 60000;
@@ -8,22 +9,17 @@ export default class StatsMonitor {
   constructor(db, options) {
     this.db = db;
     this.timer;
-    this.blocks = [];
-    this.blockScrollId = 0;
   }
 
   async run() {
     if (this.isExiting) return;
-    this.blocks = await this.getBlocks();
-    if (this.blocks.length > 0) {
-      await this.processBlocks();
-      this.blockScrollId = this.blocks[this.blocks.length - 1].id;
-      this.run();
-    } else {
-      this.blockScrollId = 0;
-      console.log(`No blocks left to monitor, waiting ${DELAY / 1000}s`);
-      this.timer = setTimeout(() => this.run(), DELAY);
-    }
+    await inBatches(
+      this.db.pg("blocks"),
+      blocks => this.processBlocks(blocks),
+      BATCH_SIZE
+    );
+    console.log(`No blocks left to monitor, waiting ${DELAY / 1000}s`);
+    this.timer = setTimeout(() => this.run(), DELAY);
   }
 
   async exit() {
@@ -33,20 +29,12 @@ export default class StatsMonitor {
     process.exit();
   }
 
-  getBlocks() {
-    return this.db
-      .pg("blocks")
-      .orderBy("id", "asc")
-      .where("id", ">", this.blockScrollId)
-      .limit(BATCH_SIZE);
-  }
-
-  async processBlocks() {
-    const blockHashes = this.blocks.map(block => block.hash);
+  async processBlocks(blocks) {
+    const blockHashes = blocks.map(block => block.hash);
     const indexedByBlockHash = await this.indexedTransactionsByBlockHash(
       blockHashes
     );
-    const statsJson = this.blocks.map(block => {
+    const statsJson = blocks.map(block => {
       return {
         hash: block.hash,
         number: block.number,

@@ -5,6 +5,7 @@ import "source-map-support/register";
 
 import program from "commander";
 import initDb from "./db";
+import inBatches from "./util/inBatches";
 
 import BlockAdder from "./services/BlockAdder";
 import BlockWatcher from "./services/BlockWatcher";
