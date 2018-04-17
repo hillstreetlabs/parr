@@ -152,7 +152,6 @@ export default class TransactionImporter {
         address: log.address,
         data: log.data,
         blockNumber: log.blockNumber.toNumber(),
-        removed: log.removed,
         transactionIndex: log.transactionIndex.toNumber()
       }
     };
@@ -167,8 +166,7 @@ export default class TransactionImporter {
       receipt: {
         contractAddress: receipt.contractAddress,
         cumulativeGasUsed: receipt.cumulativeGasUsed.toString(10),
-        gasUsed: receipt.gasUsed.toString(10),
-        status: receipt.status
+        gasUsed: receipt.gasUsed.toString(10)
       },
       data: {
         blockNumber: transaction.blockNumber.toNumber(),
