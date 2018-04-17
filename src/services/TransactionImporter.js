@@ -117,7 +117,7 @@ export default class TransactionImporter {
       .pg("addresses")
       .where("address", contractAddress)
       .first();
-    const contractAbiForDecoding = address.abi || GENERIC_EVENTS_ABI;
+    const contractAbiForDecoding = address.abi || genericEventsAbi;
     try {
       const decoder = Eth.abi.logDecoder(contractAbiForDecoding);
       decoded = decoder(logs);
