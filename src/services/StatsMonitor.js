@@ -44,9 +44,6 @@ export default class StatsMonitor {
 
   async processBlocks() {
     const blockHashes = this.blocks.map(block => block.hash);
-    const importedByBlockHash = await this.importedTransactionsByBlockHash(
-      blockHashes
-    );
     const indexedByBlockHash = await this.indexedTransactionsByBlockHash(
       blockHashes
     );
@@ -56,27 +53,12 @@ export default class StatsMonitor {
         number: block.number,
         id: block.id,
         transaction_count: block.data.transactionCount,
-        imported_count: importedByBlockHash[block.hash] || 0,
         indexed_count: indexedByBlockHash[block.hash] || 0
       };
     });
     await this.db.elasticsearch.bulkIndex("parr_monitoring", statsJson);
     console.log(`Updated monitoring for ${statsJson.length} blocks`);
     return true;
-  }
-
-  async importedTransactionsByBlockHash(blockHashes) {
-    const importedMap = {};
-    const importedRows = await this.db
-      .pg("transactions")
-      .whereIn("block_hash", blockHashes)
-      .groupBy("block_hash")
-      .select("block_hash")
-      .count();
-    importedRows.forEach(
-      row => (importedMap[row.block_hash] = parseInt(row.count))
-    );
-    return importedMap;
   }
 
   async indexedTransactionsByBlockHash(blockHashes) {

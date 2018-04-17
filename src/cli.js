@@ -139,15 +139,16 @@ program
 program
   .command("es:reset")
   .description("reset Elasticsearch")
+  .option("-I, --index <n>", "index name to reset")
   .action(async options => {
     const { elasticsearch, pg, redis } = initDb();
     try {
-      const receipt = await elasticsearch.reset();
+      const receipt = await elasticsearch.reset(options.index);
+      console.log(`Reset elasticsearch indices: ${receipt.join(", ")}`);
       // TODO: figure out a nice way of moving things to different queues
       // so that we can reindex things here.
       pg.destroy();
       redis.end(true);
-      console.log(`Reset elasticsearch index`, receipt);
     } catch (err) {
       console.log(`Error`, err);
     }
