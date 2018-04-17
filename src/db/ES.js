@@ -19,9 +19,92 @@ export const INDICES = [
           join_field: { type: "join", relations: { block: "transaction" } },
           type: { type: "keyword" },
           hash: { type: "keyword", normalizer: "lowercase_normalizer" },
-          to: { type: "object" },
-          from: { type: "object" },
-          value: { type: "double" }
+          to: {
+            type: "object",
+            properties: {
+              address: {
+                type: "keyword",
+                normalizer: "lowercase_normalizer"
+              }
+            }
+          },
+          from: {
+            type: "object",
+            properties: {
+              address: {
+                type: "keyword",
+                normalizer: "lowercase_normalizer"
+              }
+            }
+          },
+          internal_transactions: {
+            type: "nested",
+            properties: {
+              from: {
+                type: "keyword",
+                normalizer: "lowercase_normalizer"
+              },
+              to: {
+                type: "keyword",
+                normalizer: "lowercase_normalizer"
+              },
+              block: {
+                type: "object",
+                properties: {
+                  parent_hash: {
+                    type: "keyword",
+                    normalizer: "lowercase_normalizer"
+                  }
+                }
+              },
+              transaction: {
+                type: "object",
+                properties: {
+                  to: {
+                    type: "object",
+                    properties: {
+                      address: {
+                        type: "keyword",
+                        normalizer: "lowercase_normalizer"
+                      }
+                    }
+                  },
+                  from: {
+                    type: "object",
+                    properties: {
+                      address: {
+                        type: "keyword",
+                        normalizer: "lowercase_normalizer"
+                      }
+                    }
+                  },
+                  hash: {
+                    type: "keyword",
+                    normalizer: "lowercase_normalizer"
+                  }
+                }
+              }
+              value: { type: "double" }
+            }
+          }
+          value: { type: "double" },
+          logs: {
+            type: "nested",
+            properties: {
+              address: {
+                type: "keyword",
+                normalizer: "lowercase_normalizer"
+              },
+              block_hash: {
+                type: "keyword",
+                normalizer: "lowercase_normalizer"
+              },
+              transaction_hash: {
+                type: "keyword",
+                normalizer: "lowercase_normalizer"
+              }
+            }
+          }
         }
       }
     }
