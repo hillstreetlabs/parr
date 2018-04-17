@@ -9,6 +9,7 @@ import { importAddress } from "./AddressImporter";
 
 const BATCH_SIZE = 50;
 const DELAY = 5000;
+const GENERIC_EVENTS_ABI = require("../../contracts/Events.json");
 
 export default class TransactionImporter {
   @observable transactionCount = 0;
@@ -116,8 +117,7 @@ export default class TransactionImporter {
       .pg("addresses")
       .where("address", contractAddress)
       .first();
-    const contractAbiForDecoding =
-      address.abi || require("../../contracts/Events.json");
+    const contractAbiForDecoding = address.abi || GENERIC_EVENTS_ABI;
     try {
       const decoder = Eth.abi.logDecoder(contractAbiForDecoding);
       decoded = decoder(logs);
