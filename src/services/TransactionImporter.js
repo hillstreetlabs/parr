@@ -10,20 +10,7 @@ import { importAddress } from "./AddressImporter";
 const BATCH_SIZE = 50;
 const DELAY = 5000;
 
-// Map of contract names (as they appear in the file name stored in /contracts)
-// to the key on the address.implements that says if the address implements that
-// contract. If the address is a contract and has no uploaded abi, we will merge
-// the ones it implements together and use that to do as much decoding as we
-// can.
-const GENERIC_CONTRACTS_FOR_LOG_DECODING = {
-  ERC20: "erc20",
-  ERC721: "erc721",
-  "ERC721-original": "erc721_original",
-  Crowdsale: "crowdsale",
-  NonFungibleToken: "non_fungible_token"
-};
-
-export default class TransactionDownloader {
+export default class TransactionImporter {
   @observable transactionCount = 0;
   @observable errorCount = 0;
   @observable logCount = 0;
@@ -129,9 +116,10 @@ export default class TransactionDownloader {
       .pg("addresses")
       .where("address", contractAddress)
       .first();
-    const calculatedAddressAbi = address.abi || calculateAddressAbi(address);
+    const contractAbiForDecoding =
+      address.abi || require("../../contracts/Events.json");
     try {
-      const decoder = Eth.abi.logDecoder(calculatedAddressAbi);
+      const decoder = Eth.abi.logDecoder(contractAbiForDecoding);
       decoded = decoder(logs);
     } catch (error) {
       decoded = [];
@@ -141,20 +129,6 @@ export default class TransactionDownloader {
         return this.importLog(log, decoded[index]);
       })
     );
-  }
-
-  calculateAddressAbi(address) {
-    let fullAbi = [];
-    Object.keys(GENERIC_CONTRACTS_FOR_LOG_DECODING).forEach(contractName => {
-      const implementsKey = GENERIC_CONTRACTS_FOR_LOG_DECODING[contractName];
-      if (address.implements[implementsKey]) {
-        let contract = require(`../../contracts/${contractName}.json`);
-        fullAbi = fullAbi.concat(contract.abi);
-      }
-    });
-    // use a set to uniquify the contents of the array, then splat it back
-    // to a plain old array
-    return Array.from(new Set(fullAbi));
   }
 
   async importLog(log, decoded) {
