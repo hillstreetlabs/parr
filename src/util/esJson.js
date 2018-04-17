@@ -3,14 +3,14 @@ export const logJson = log => {
     address: log.data.address,
     block: log.block ? blockJson(log.block) : {},
     data: log.data.data,
-    blockHash: log.data.blockHash,
-    blockNumber: log.data.blockNumber,
+    block_hash: log.data.blockHash,
+    block_number: log.data.blockNumber,
     decoded: log.decoded,
     id: log.id,
-    logIndex: log.log_index,
+    log_index: log.log_index,
     removed: log.data.removed,
-    transactionHash: log.transaction_hash,
-    transactionIndex: log.data.transactionIndex
+    transaction_hash: log.transaction_hash,
+    transaction_index: log.data.transactionIndex
   };
 };
 
@@ -89,22 +89,16 @@ export const internalTransactionJson = internalTransaction => {
   return {
     from: internalTransaction.from_address,
     to: internalTransaction.to_address,
-    block: internalTransaction.block
-      ? blockJson(internalTransaction.block)
-      : {},
-    transaction: internalTransaction.transaction
-      ? transactionJson(internalTransaction.transaction)
-      : {},
     timestamp: internalTransaction.data.timestamp,
     value: internalTransaction.data.value,
-    contractAddress: internalTransaction.data.contractAddress,
+    contract_address: internalTransaction.data.contractAddress,
     input: internalTransaction.data.input,
     id: internalTransaction.id,
     type: internalTransaction.data.type,
     gas: internalTransaction.data.gas,
-    gasUsed: internalTransaction.data.gasUsed,
-    isError: internalTransaction.data.isError,
-    errCode: internalTransaction.data.errCode,
-    blockNumber: internalTransaction.data.blockNumber
+    gas_used: internalTransaction.data.gasUsed,
+    is_error: internalTransaction.data.isError,
+    err_code: internalTransaction.data.errCode,
+    block_number: internalTransaction.data.blockNumber
   };
 };
