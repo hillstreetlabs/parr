@@ -163,6 +163,7 @@ export default class TransactionImporter {
       hash: transaction.hash,
       to_address: transaction.to || receipt.contractAddress,
       from_address: transaction.from,
+      block_hash: transaction.blockHash,
       receipt: {
         contractAddress: receipt.contractAddress,
         cumulativeGasUsed: receipt.cumulativeGasUsed.toString(10),
