@@ -6,6 +6,7 @@ import { Line, LineBuffer, Clear } from "clui";
 import { observable, autorun } from "mobx";
 import createTimer from "../util/createTimer";
 import { importAddress } from "./AddressImporter";
+import genericEventsAbi from "../../contracts/Events.json";
 
 const BATCH_SIZE = 50;
 const DELAY = 5000;
@@ -116,14 +117,11 @@ export default class TransactionImporter {
       .pg("addresses")
       .where("address", contractAddress)
       .first();
-    if (contract && contract.abi) {
-      try {
-        const decoder = Eth.abi.logDecoder(contract.abi);
-        decoded = decoder(logs);
-      } catch (error) {
-        decoded = [];
-      }
-    } else {
+    const contractAbiForDecoding = address.abi || genericEventsAbi;
+    try {
+      const decoder = Eth.abi.logDecoder(contractAbiForDecoding);
+      decoded = decoder(logs);
+    } catch (error) {
       decoded = [];
     }
     return Promise.all(
