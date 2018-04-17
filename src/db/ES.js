@@ -50,7 +50,7 @@ export const INDICES = [
               },
               value: { type: "double" }
             }
-          }
+          },
           value: { type: "double" },
           logs: {
             type: "nested",
