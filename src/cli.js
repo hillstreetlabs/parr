@@ -17,6 +17,8 @@ import TransactionIndexer from "./services/TransactionIndexer";
 import AddressImporter from "./services/AddressImporter";
 import AddressIndexer from "./services/AddressIndexer";
 
+import StatsMonitor from "./services/StatsMonitor";
+
 program
   .command("blocks:add")
   .description("Add blocks from Ethereum to Parr")
@@ -122,6 +124,16 @@ program
     const indexer = new AddressIndexer(db);
     indexer.run();
     process.on("SIGINT", () => indexer.exit());
+  });
+
+program
+  .command("monitor")
+  .description("monitor stats for blocks")
+  .action(async options => {
+    const db = initDb();
+    const monitor = new StatsMonitor(db);
+    monitor.run();
+    process.on("SIGINT", () => monitor.exit());
   });
 
 program

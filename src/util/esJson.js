@@ -66,7 +66,7 @@ export const blockJson = block => {
     difficulty: block.data.difficulty,
     gas_limit: block.data.gasLimit,
     gas_used: block.data.gasUsed,
-    hash: block.data.hash,
+    hash: block.hash,
     id: `block:${block.hash}`,
     miner: block.data.miner,
     nonce: block.data.nonce,

@@ -49,6 +49,10 @@ export const INDICES = [
         }
       }
     }
+  },
+  {
+    name: "parr_monitoring",
+    mapping: { _doc: { properties: { hash: { type: "keyword" } } } }
   }
 ];
 
