@@ -6,6 +6,18 @@ import { INDICES } from "../db/ES";
 export default ({ config, db }) => {
   let api = Router();
 
+  api.use("/monitoring", async (req, res) => {
+    try {
+      const response = await db.elasticsearch.client.search({
+        index: "parr_monitoring",
+        body: { query: { match_all: {} } }
+      });
+      res.json({ response });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   api.use("/", async (req, res) => {
     let blockCount = db.pg("blocks").count();
 

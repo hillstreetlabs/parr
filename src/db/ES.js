@@ -113,6 +113,10 @@ export const INDICES = [
         }
       }
     }
+  },
+  {
+    name: "parr_monitoring",
+    mapping: { _doc: { properties: { hash: { type: "keyword" } } } }
   }
 ];
 
@@ -128,18 +132,24 @@ export default class ES {
     return this.client.indices.stats();
   }
 
-  reset() {
-    INDICES.map(async index => {
-      const indexExists = await this.client.indices.exists({
-        index: index.name
-      });
-      if (indexExists) await this.client.indices.delete({ index: index.name });
-      return this.client.indices.create({
-        index: index.name,
-        body: { settings: index.settings, mappings: index.mappings }
-      });
-    });
-    return true;
+  async reset(indexName = null) {
+    const indicesToReset = INDICES.filter(
+      index => (indexName ? index.name === indexName : true)
+    );
+    const receipts = await Promise.all(
+      indicesToReset.map(async index => {
+        const indexExists = await this.client.indices.exists({
+          index: index.name
+        });
+        if (indexExists)
+          await this.client.indices.delete({ index: index.name });
+        return this.client.indices.create({
+          index: index.name,
+          body: { settings: index.settings, mappings: index.mappings }
+        });
+      })
+    );
+    return receipts.map(receipt => receipt.index);
   }
 
   async count(index) {
