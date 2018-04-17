@@ -22,7 +22,7 @@ promisifyRedis();
 export default () => {
   const web3 = new Eth(new HttpProvider(process.env.JSON_RPC_URL));
   const elasticsearch = new ES();
-  const redis = Redis.createClient();
+  const redis = Redis.createClient(process.env.REDIS_URL);
   const etherscan = Etherscan.init(process.env.ETHERSCAN_KEY);
   const pg = Knex(knexConfig[process.env.NODE_ENV || "development"]);
 

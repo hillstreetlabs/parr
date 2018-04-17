@@ -31,19 +31,19 @@ program
     try {
       const latest = (await db.web3.blockNumber()).toNumber() - 6;
       const promises = [];
-      if (options.block) promises.push(adder.importBlock(options.block));
+      if (options.block) promises.push(adder.addBlock(options.block));
       if (options.last) {
-        promises.push(adder.run(latest - (options.last - 1), latest));
+        promises.push(adder.addBlocks(latest - (options.last - 1), latest));
       }
       if (options.from || options.to) {
         const fromBlock = options.from || 1;
         const toBlock = options.to || latest;
         if (toBlock < fromBlock)
           throw "toBlock must be greater than or equal to fromBlock";
-        promises.push(adder.run(fromBlock, toBlock));
+        promises.push(adder.addBlocks(fromBlock, toBlock));
       }
       if (options.all) {
-        promises.push(adder.run(1, latest));
+        promises.push(adder.addBlocks(1, latest));
       }
       await Promise.all(promises);
       db.pg.destroy();

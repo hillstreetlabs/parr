@@ -10,13 +10,13 @@ export default class BlockAdder {
     this.failedBlockNumbers = []; // Record of blocks that failed to import
   }
 
-  async run(fromBlock, toBlock) {
+  async addBlocks(fromBlock, toBlock) {
     let batchStartBlock = fromBlock;
     let batchEndBlock = Math.min(batchStartBlock + BATCH_SIZE - 1, toBlock);
     while (batchStartBlock <= toBlock) {
       let promises = [];
       for (let num = batchStartBlock; num <= batchEndBlock; num += 1) {
-        promises.push(this.importBlock(num));
+        promises.push(this.addBlock(num));
       }
       await Promise.all(promises);
       batchStartBlock = batchEndBlock + 1;
@@ -34,14 +34,14 @@ export default class BlockAdder {
     );
     const blockNumbers = this.failedBlockNumbers;
     this.failedBlockNumbers = [];
-    await Promise.all(blockNumbers.map(num => this.importBlock(num)));
+    await Promise.all(blockNumbers.map(num => this.addBlock(num)));
     if (this.failedBlockNumbers.length > 0) {
       await this.handleFailedBlocks(attemptCount + 1);
     }
   }
 
   // Adds the block hash of a particular block to redis
-  async importBlock(blockNumber) {
+  async addBlock(blockNumber) {
     try {
       const block = await withTimeout(
         this.db.web3.getBlockByNumber(blockNumber, true),
