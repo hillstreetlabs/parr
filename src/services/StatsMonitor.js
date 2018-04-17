@@ -2,8 +2,7 @@ import { action, computed, observable } from "mobx";
 import withTimeout from "../util/withTimeout";
 
 const BATCH_SIZE = 200;
-//const DELAY = 60000;
-const DELAY = 1000;
+const DELAY = 60000;
 
 export default class StatsMonitor {
   constructor(db, options) {
