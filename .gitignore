@@ -2,6 +2,7 @@
 *.log
 npm-debug.log
 yarn-error.log
+dump.rdb
 
 # OSX
 .DS_Store
