@@ -10,7 +10,7 @@ import { importAddress } from "./AddressImporter";
 const BATCH_SIZE = 50;
 const DELAY = 5000;
 
-export default class TransactionDownloader {
+export default class TransactionImporter {
   @observable transactionCount = 0;
   @observable errorCount = 0;
   @observable logCount = 0;
@@ -18,7 +18,7 @@ export default class TransactionDownloader {
 
   constructor(db) {
     this.db = db;
-    this.pid = `TransactionDownloader@${uuid.v4()}`;
+    this.pid = `TransactionImporter@${uuid.v4()}`;
     this.timer = createTimer();
 
     this.stopPrintingStats = autorun(() => this.printStats());
@@ -27,12 +27,12 @@ export default class TransactionDownloader {
 
   async run() {
     if (this.isExiting) return;
-    let transactions = await this.getTransactions();
-    if (transactions.length > 0) {
-      await this.importTransactions(transactions);
+    this.transactionHashes = await this.getTransactionHashes();
+    if (this.transactionHashes.length > 0) {
+      await this.importTransactions();
       this.run();
     } else {
-      console.log(`No imported transactions found, waiting ${DELAY}ms`);
+      console.log(`No transactions found to import, waiting ${DELAY}ms`);
       this.timeout = setTimeout(() => this.run(), DELAY);
     }
   }
@@ -40,94 +40,74 @@ export default class TransactionDownloader {
   async exit() {
     this.isExiting = true;
     console.log("Exiting...");
-    console.log("Errors", this.errors);
+    console.log(this.errors);
     clearTimeout(this.timeout);
-    const unlocked = await this.db.pg
-      .select()
-      .from("transactions")
-      .where({ locked_by: this.pid })
-      .returning("hash")
-      .update({
-        locked_by: null,
-        locked_at: null
-      });
-    console.log(`Unlocked ${unlocked.length} transactions`);
+    if (this.transactionHashes.length > 0)
+      await this.db.redis.saddAsync(
+        "transactions:to_import",
+        this.transactionHashes
+      );
+    console.log(`Unlocked ${this.transactionHashes.length} transactions`);
     process.exit();
   }
 
-  async getTransactions() {
-    const timer = this.timer.time("postgres");
-    const result = await this.db.pg.transaction(async trx => {
-      const transactions = await trx
-        .select()
-        .from("transactions")
-        .where({ status: "imported", locked_by: null })
-        .limit(BATCH_SIZE);
-      const hashes = await trx
-        .select()
-        .from("transactions")
-        .whereIn("id", transactions.map(t => t.id))
-        .returning("hash")
-        .update({
-          locked_by: this.pid,
-          locked_at: this.db.pg.fn.now()
-        });
-      return transactions;
-    });
-    timer.stop();
-    return result;
+  getTransactionHashes() {
+    return this.db.redis.spopAsync("transactions:to_import", BATCH_SIZE);
   }
 
-  async importTransactions(transactions) {
+  async importTransactions() {
     await Promise.all(
-      transactions.map(transaction => {
-        return this.importTransaction(transaction);
+      this.transactionHashes.map(hash => {
+        return this.importTransaction(hash);
       })
     );
   }
 
-  async importTransaction(transaction) {
+  async importTransaction(transactionHash) {
     try {
-      let timer = this.timer.time("download");
       const receipt = await withTimeout(
-        this.db.web3.getTransactionReceipt(transaction.hash),
+        this.db.web3.getTransactionReceipt(transactionHash),
         5000
       );
 
-      timer.stop();
-      timer = this.timer.time("postgres");
-      await Promise.all([
-        importAddress(this.db, receipt.to || receipt.contractAddress),
-        importAddress(this.db, receipt.from)
-      ]);
-      const logs = await this.importLogs(
-        receipt.to || receipt.contractAddress,
-        receipt.logs
+      const transaction = await withTimeout(
+        this.db.web3.getTransactionByHash(transactionHash),
+        5000
       );
+
+      const to = transaction.to || receipt.contractAddress;
+
+      const toAddress = await this.db.pg
+        .from("addresses")
+        .where({ address: to })
+        .first();
+      const fromAddress = await this.db.pg
+        .from("addresses")
+        .where({ address: transaction.from })
+        .first();
+      if (!toAddress) await this.db.redis.saddAsync("addresses:to_import", to);
+      if (!fromAddress)
+        await this.db.redis.saddAsync("addresses:to_import", transaction.from);
+
+      const logs = await this.importLogs(to, receipt.logs);
+
       await upsert(
         this.db.pg,
         "transactions",
         this.transactionJson(transaction, receipt),
         "(hash)"
       );
-      timer.stop();
+      await this.db.redis.saddAsync("transactions:to_index", transactionHash);
       this.transactionCount++;
     } catch (err) {
       this.errorCount++;
       this.errors.push(err);
-      return this.unlockTransaction(transaction);
+      return this.unlockTransaction(transactionHash);
     }
   }
 
-  async unlockTransaction(transaction) {
-    const timer = this.timer.time("postgres");
-    const unlocked = await this.db
-      .pg("transactions")
-      .where("hash", transaction.hash)
-      .returning("hash")
-      .update({ locked_by: null, locked_at: null });
-    timer.stop();
-    return unlocked;
+  async unlockTransaction(transactionHash) {
+    await this.db.redis.saddAsync("transactions:to_import", transactionHash);
   }
 
   async importLogs(contractAddress, logs) {
@@ -169,7 +149,6 @@ export default class TransactionDownloader {
       block_hash: log.blockHash,
       transaction_hash: log.transactionHash,
       log_index: log.logIndex.toNumber(),
-      status: "downloaded",
       decoded: decoded,
       data: {
         address: log.address,
@@ -184,17 +163,22 @@ export default class TransactionDownloader {
   transactionJson(transaction, receipt) {
     return {
       hash: transaction.hash,
-      status: "downloaded",
-      locked_by: null,
-      locked_at: null,
-      downloaded_by: this.pid,
-      downloaded_at: this.db.pg.fn.now(),
-      to_address: transaction.to_address || receipt.contractAddress,
+      to_address: transaction.to || receipt.contractAddress,
+      from_address: transaction.from,
       receipt: {
         contractAddress: receipt.contractAddress,
         cumulativeGasUsed: receipt.cumulativeGasUsed.toString(10),
         gasUsed: receipt.gasUsed.toString(10),
         status: receipt.status
+      },
+      data: {
+        blockNumber: transaction.blockNumber.toNumber(),
+        gas: transaction.gas.toString(10),
+        gasPrice: Eth.fromWei(transaction.gasPrice, "ether"),
+        nonce: transaction.nonce.toString(10),
+        transactionIndex: transaction.transactionIndex.toNumber(),
+        value: Eth.fromWei(transaction.value, "ether"),
+        logs: []
       }
     };
   }
@@ -235,20 +219,12 @@ export default class TransactionDownloader {
     new Line(outputBuffer).fill().store();
 
     // Time
-    const times = this.timer.get();
-    const totalTime = times.postgres + times.download;
-    const postgresPerc = Math.floor(100 * times.postgres / totalTime);
-    const downloadPerc = Math.floor(100 * times.download / totalTime);
     new Line(outputBuffer)
       .column("Time", 13)
-      .column("Postgres", 13)
-      .column("Download", 13)
       .fill()
       .store();
     new Line(outputBuffer)
       .column(`${Math.floor(totalSeconds)}s`, 13)
-      .column(`${postgresPerc}%`, 13)
-      .column(`${downloadPerc}%`, 13)
       .fill()
       .store();
 

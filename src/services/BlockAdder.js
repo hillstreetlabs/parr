@@ -4,19 +4,19 @@ import withTimeout from "../util/withTimeout";
 const BATCH_SIZE = 30;
 const MAX_FAILURE_ATTEMPTS = 10;
 
-export default class BlockImporter {
+export default class BlockAdder {
   constructor(db) {
     this.db = db;
     this.failedBlockNumbers = []; // Record of blocks that failed to import
   }
 
-  async importBlocks(fromBlock, toBlock) {
+  async addBlocks(fromBlock, toBlock) {
     let batchStartBlock = fromBlock;
     let batchEndBlock = Math.min(batchStartBlock + BATCH_SIZE - 1, toBlock);
     while (batchStartBlock <= toBlock) {
       let promises = [];
       for (let num = batchStartBlock; num <= batchEndBlock; num += 1) {
-        promises.push(this.importBlock(num));
+        promises.push(this.addBlock(num));
       }
       await Promise.all(promises);
       batchStartBlock = batchEndBlock + 1;
@@ -34,32 +34,26 @@ export default class BlockImporter {
     );
     const blockNumbers = this.failedBlockNumbers;
     this.failedBlockNumbers = [];
-    await Promise.all(blockNumbers.map(num => this.importBlock(num)));
+    await Promise.all(blockNumbers.map(num => this.addBlock(num)));
     if (this.failedBlockNumbers.length > 0) {
       await this.handleFailedBlocks(attemptCount + 1);
     }
   }
 
-  async importBlock(blockNumber) {
+  // Adds the block hash of a particular block to redis
+  async addBlock(blockNumber) {
     try {
       const block = await withTimeout(
         this.db.web3.getBlockByNumber(blockNumber, true),
         5000
       );
-      const blockJson = {
-        number: block.number.toNumber(),
-        hash: block.hash,
-        status: "imported"
-      };
-      const saved = await upsert(this.db.pg, "blocks", blockJson, "(hash)");
+      await this.db.redis.saddAsync("blocks:to_import", block.hash);
       console.log(
-        `Imported block: ${block.number.toString()}\tHash: ${block.hash}`
+        `Added block: ${block.number.toString()}\tHash: ${block.hash}`
       );
-      return saved;
     } catch (err) {
       this.failedBlockNumbers.push(blockNumber);
-      console.log(`Failed to import block ${blockNumber}`);
-      return true;
+      console.log(`Failed to add block ${blockNumber}`, err);
     }
   }
 }
