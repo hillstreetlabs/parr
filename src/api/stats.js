@@ -1,7 +1,7 @@
 import { version } from "../../package.json";
 import Eth from "ethjs";
 import { Router } from "express";
-import { INDICES } from "../lib/ES";
+import { INDICES } from "../db/ES";
 
 export default ({ config, db }) => {
   let api = Router();

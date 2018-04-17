@@ -107,12 +107,7 @@ export default class BlockWatcher {
   }
 
   async saveBlock(block) {
-    const blockJson = {
-      number: block.number,
-      hash: block.hash,
-      status: "imported"
-    };
-    await upsert(this.db.pg, "blocks", blockJson, "(hash)");
+    await this.db.redis.saddAsync("blocks:to_import", block.hash);
     console.log(`Imported block: ${block.number}\tHash: ${block.hash}`);
   }
 }

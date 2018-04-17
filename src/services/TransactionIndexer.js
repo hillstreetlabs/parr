@@ -22,9 +22,9 @@ export default class TransactionIndexer {
 
   async run() {
     if (this.isExiting) return;
-    let transactions = await this.getTransactions();
-    if (transactions.length > 0) {
-      await this.indexTransactions(transactions);
+    this.transactions = await this.getTransactions();
+    if (this.transactions.length > 0) {
+      await this.indexTransactions();
       this.run();
     } else {
       console.log(`No downloaded transactions found, waiting ${DELAY}ms`);
@@ -42,45 +42,29 @@ export default class TransactionIndexer {
   }
 
   async unlockTransactions() {
-    const unlocked = await this.db.pg
-      .select()
-      .from("transactions")
-      .where({ locked_by: this.pid })
-      .returning("hash")
-      .update({
-        locked_by: null,
-        locked_at: null
-      });
-    console.log(`Unlocked ${unlocked.length} transactions`);
+    if (this.transactions.length > 0)
+      await this.db.redis.saddAsync(
+        "transactions:to_index",
+        this.transactions.map(tx => tx.hash)
+      );
+    console.log(`Unlocked ${this.transactions.length} transactions`);
   }
 
-  getTransactions() {
-    const timer = this.timer.time("getTransactions");
-    return this.db.pg.transaction(async trx => {
-      const transactions = await trx
-        .select()
-        .from("transactions")
-        .where({ status: "downloaded", locked_by: null })
-        .limit(BATCH_SIZE);
-      const hashes = await trx
-        .select()
-        .from("transactions")
-        .whereIn("hash", transactions.map(transaction => transaction.hash))
-        .returning("hash")
-        .update({
-          locked_by: this.pid,
-          locked_at: this.db.pg.fn.now()
-        });
-      timer.stop();
-      return transactions;
-    });
+  async getTransactions() {
+    const transactionHashes = await this.db.redis.spopAsync(
+      "transactions:to_index",
+      BATCH_SIZE
+    );
+    return this.db.pg.from("transactions").whereIn("hash", transactionHashes);
   }
 
-  async indexTransactions(transactions) {
+  async indexTransactions() {
     try {
       const fetchTimer = this.timer.time("fetching");
       const transactionsData = await Promise.all(
-        transactions.map(transaction => this.fetchTransactionData(transaction))
+        this.transactions.map(transaction =>
+          this.fetchTransactionData(transaction)
+        )
       );
       fetchTimer.stop();
       const indexTimer = this.timer.time("indexing");
@@ -88,20 +72,7 @@ export default class TransactionIndexer {
       await this.indexAsFromTransactions(transactionsData);
       await this.indexAsToTransactions(transactionsData);
       indexTimer.stop();
-      const updateTimer = this.timer.time("updating");
-      const updated = await this.db
-        .pg("transactions")
-        .whereIn("hash", transactions.map(transaction => transaction.hash))
-        .returning("hash")
-        .update({
-          status: "indexed",
-          locked_by: null,
-          locked_at: null,
-          indexed_by: this.pid,
-          indexed_at: this.db.pg.fn.now()
-        });
-      updateTimer.stop();
-      this.indexedTransactions += updated.length;
+      this.indexedTransactions += this.transactions.length;
     } catch (err) {
       console.log(`Failed to index transactions`, err);
       return this.unlockTransactions();
