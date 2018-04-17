@@ -221,7 +221,6 @@ program
       console.log(`Reset ${addressesResetCount} addresses for re-indexing`);
       pg.destroy();
       redis.end(true);
-      console.log("I KILLED REDIS");
     } catch (err) {
       console.log(`Error`, err);
     }
