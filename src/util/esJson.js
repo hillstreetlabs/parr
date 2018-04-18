@@ -1,4 +1,5 @@
 import Eth from "ethjs";
+import BN from "bn.js";
 
 export const logJson = log => {
   return {
@@ -17,10 +18,16 @@ export const logJson = log => {
 };
 
 export const weiJson = wei => {
+  // Hack to deal with versioning
+  // If wei is a number (as in transaction.value),
+  // it is actually ether and we need to convert it
+  if (Number(wei) === wei) {
+    wei = Eth.toWei(wei, "ether");
+  }
   const raw = wei.toString();
   return {
     wei: parseFloat(raw),
-    eth: parseFloat(Eth.fromWei(raw, "ether")),
+    eth: parseFloat(Eth.fromWei(wei, "ether")),
     raw
   };
 };
