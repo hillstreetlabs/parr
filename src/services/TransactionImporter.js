@@ -174,7 +174,7 @@ export default class TransactionImporter {
         gasPrice: Eth.fromWei(transaction.gasPrice, "ether"),
         nonce: transaction.nonce.toString(10),
         transactionIndex: transaction.transactionIndex.toNumber(),
-        value: Eth.fromWei(transaction.value, "ether"),
+        value: transaction.value.toString(),
         logs: []
       }
     };
