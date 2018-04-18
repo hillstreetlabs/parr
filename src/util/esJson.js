@@ -27,7 +27,7 @@ export const weiJson = wei => {
   const raw = wei.toString();
   return {
     wei: parseFloat(raw),
-    eth: parseFloat(Eth.fromWei(wei, "ether")),
+    eth: parseFloat(Eth.fromWei(raw, "ether")),
     raw
   };
 };
