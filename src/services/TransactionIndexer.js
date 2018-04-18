@@ -1,5 +1,7 @@
 import uuid from "uuid";
 import omit from "lodash/omit";
+import uniq from "lodash/uniq";
+import flatten from "lodash/flatten";
 import { logJson, transactionJson } from "../util/esJson";
 import createTimer from "../util/createTimer";
 import { observable, autorun } from "mobx";
@@ -60,16 +62,14 @@ export default class TransactionIndexer {
 
   async indexTransactions() {
     try {
-      const transactionsData = await Promise.all(
-        this.transactions.map(transaction =>
-          this.fetchTransactionData(transaction)
-        )
-      );
-      const indexTimer = this.timer.time("indexing");
-      await this.indexAsTransactions(transactionsData);
-      await this.indexAsFromTransactions(transactionsData);
-      await this.indexAsToTransactions(transactionsData);
-      indexTimer.stop();
+      let timer = this.timer.time("fetching");
+      await this.fetchTransactionData();
+      timer.stop();
+      timer = this.timer.time("indexing");
+      await this.indexAsTransactions();
+      await this.indexAsFromTransactions();
+      await this.indexAsToTransactions();
+      timer.stop();
       this.indexedTransactions += this.transactions.length;
     } catch (err) {
       console.log(`Failed to index transactions`, err);
@@ -77,8 +77,8 @@ export default class TransactionIndexer {
     }
   }
 
-  async indexAsTransactions(transactions) {
-    const transactionsJson = transactions.map(transaction => {
+  async indexAsTransactions() {
+    const transactionsJson = this.transactions.map(transaction => {
       transaction.type = "transaction";
       transaction.join_field = {
         name: "transaction",
@@ -95,8 +95,8 @@ export default class TransactionIndexer {
     return indexed;
   }
 
-  async indexAsFromTransactions(transactions) {
-    const transactionsJson = transactions.map(transaction => {
+  async indexAsFromTransactions() {
+    const transactionsJson = this.transactions.map(transaction => {
       transaction.type = "from_transaction";
       transaction.join_field = {
         name: "from_transaction",
@@ -113,8 +113,8 @@ export default class TransactionIndexer {
     return indexed;
   }
 
-  async indexAsToTransactions(transactions) {
-    const transactionsJson = transactions.map(transaction => {
+  async indexAsToTransactions() {
+    const transactionsJson = this.transactions.map(transaction => {
       transaction.type = "to_transaction";
       transaction.join_field = {
         name: "to_transaction",
@@ -131,31 +131,46 @@ export default class TransactionIndexer {
     return indexed;
   }
 
-  async fetchTransactionData(transaction) {
-    let timer = this.timer.time("fetchFromAddress");
-    transaction.from = await this.db
+  // fetchTransactionData fetches addresses, blocks, and logs for each of
+  // this.transactions
+  async fetchTransactionData() {
+    // Fetch all addresses
+    const addressHashes = uniq(
+      flatten(this.transactions.map(t => [t.from_address, t.to_address]))
+    );
+    const addresses = await this.db
       .pg("addresses")
-      .where({ address: transaction.from_address })
-      .first();
-    timer.stop();
-    timer = this.timer.time("fetchToAddress");
-    transaction.to = await this.db
-      .pg("addresses")
-      .where({ address: transaction.to_address })
-      .first();
-    timer.stop();
-    timer = this.timer.time("fetchBlock");
-    transaction.block = await this.db
-      .pg("blocks")
-      .where({ hash: transaction.block_hash })
-      .first();
-    timer.stop();
-    timer = this.timer.time("fetchLogs");
-    transaction.logs = await this.db
+      .whereIn("address", addressHashes);
+    const addressesByHash = addresses.reduce((byHash, a) => {
+      byHash[a.address] = a;
+      return byHash;
+    }, {});
+
+    // Fetch all blocks
+    const blockHashes = uniq(this.transactions.map(t => t.block_hash));
+    const blocks = await this.db.pg("blocks").whereIn("hash", blockHashes);
+    const blocksByHash = blocks.reduce((byHash, b) => {
+      byHash[b.hash] = b;
+      return byHash;
+    }, {});
+
+    // Fetch all logs
+    const transactionHashes = this.transactions.map(t => t.hash);
+    const logs = await this.db
       .pg("logs")
-      .where({ transaction_hash: transaction.hash });
-    timer.stop();
-    return transaction;
+      .whereIn("transaction_hash", transactionHashes);
+    const logsByTransactionHash = logs.reduce((byHash, l) => {
+      if (!byHash[l.transaction_hash]) byHash[l.transaction_hash] = [];
+      byHash[l.transaction_hash].push(l);
+      return byHash;
+    }, {});
+
+    this.transactions.forEach(tx => {
+      tx.from = addressesByHash[tx.from_address];
+      tx.to = addressesByHash[tx.to_address];
+      tx.block = blocksByHash[tx.block_hash];
+      tx.logs = logsByTransactionHash[tx.hash];
+    });
   }
 
   printStats() {
