@@ -49,10 +49,10 @@ export const addressJson = address => {
     abi: address.abi,
     id: `address:${address.address}`
   };
-  if (address.data.token) {
+  if ((address.data || {}).token) {
     json.token = tokenJson(address.data.token);
   }
-  if (address.data.crowdsale) {
+  if ((address.data || {}).crowdsale) {
     json.crowdsale = crowdsaleJson(address.data.crowdsale);
   }
   return json;
