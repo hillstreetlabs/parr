@@ -68,6 +68,7 @@ export default class TransactionIndexer {
       );
       fetchTimer.stop();
       const indexTimer = this.timer.time("indexing");
+      console.log("JSON", transactionsData);
       await this.indexAsTransactions(transactionsData);
       await this.indexAsFromTransactions(transactionsData);
       await this.indexAsToTransactions(transactionsData);

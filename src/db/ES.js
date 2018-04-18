@@ -1,5 +1,27 @@
 import Elasticsearch from "elasticsearch";
 
+const weiMapping = {
+  eth: { type: "double" },
+  wei: { type: "double" }
+};
+
+const addressMapping = {
+  address: { type: "keyword", normalizer: "lowercase_normalizer" },
+  value: { type: "double" },
+  implements: { type: "object" },
+  crowdsale: {
+    properties: {
+      rate: {
+        properties: weiMapping
+      },
+      raised: {
+        properties: weiMapping
+      }
+    }
+  },
+  token: { type: "object" }
+};
+
 export const INDICES = [
   {
     name: "parr_blocks_transactions",
@@ -20,22 +42,10 @@ export const INDICES = [
           type: { type: "keyword" },
           hash: { type: "keyword", normalizer: "lowercase_normalizer" },
           to: {
-            type: "object",
-            properties: {
-              address: {
-                type: "keyword",
-                normalizer: "lowercase_normalizer"
-              }
-            }
+            properties: addressMapping
           },
           from: {
-            type: "object",
-            properties: {
-              address: {
-                type: "keyword",
-                normalizer: "lowercase_normalizer"
-              }
-            }
+            properties: addressMapping
           },
           internal_transactions: {
             type: "nested",
@@ -51,7 +61,7 @@ export const INDICES = [
               value: { type: "double" }
             }
           },
-          value: { type: "double" },
+          value: { properties: weiMapping },
           logs: {
             type: "nested",
             properties: {
@@ -101,15 +111,16 @@ export const INDICES = [
     mappings: {
       _doc: {
         properties: {
+          ...addressMapping,
           join_field: {
             type: "join",
             relations: { address: ["to_transaction", "from_transaction"] }
           },
+          value: { properties: weiMapping },
           type: { type: "keyword" },
-          address: { type: "keyword", normalizer: "lowercase_normalizer" },
-          value: { type: "double" },
-          implements: { type: "object" },
-          bytecode: { type: "text", analyzer: "bytecode_analyzer" }
+          bytecode: { type: "text", analyzer: "bytecode_analyzer" },
+          from: { properties: addressMapping },
+          to: { properties: addressMapping }
         }
       }
     }

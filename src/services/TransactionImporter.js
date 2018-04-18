@@ -117,7 +117,7 @@ export default class TransactionImporter {
       .pg("addresses")
       .where("address", contractAddress)
       .first();
-    const contractAbiForDecoding = address.abi || genericEventsAbi;
+    const contractAbiForDecoding = contractAddress.abi || genericEventsAbi;
     try {
       const decoder = Eth.abi.logDecoder(contractAbiForDecoding);
       decoded = decoder(logs);
@@ -176,7 +176,7 @@ export default class TransactionImporter {
         gasPrice: Eth.fromWei(transaction.gasPrice, "ether"),
         nonce: transaction.nonce.toString(10),
         transactionIndex: transaction.transactionIndex.toNumber(),
-        value: Eth.fromWei(transaction.value, "ether"),
+        value: transaction.value.toString(),
         logs: []
       }
     };
