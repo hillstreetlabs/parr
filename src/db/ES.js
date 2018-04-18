@@ -2,7 +2,8 @@ import Elasticsearch from "elasticsearch";
 
 const weiMapping = {
   eth: { type: "double" },
-  wei: { type: "double" }
+  wei: { type: "double" },
+  raw: { type: "keyword" }
 };
 
 const addressMapping = {
