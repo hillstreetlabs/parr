@@ -60,13 +60,11 @@ export default class TransactionIndexer {
 
   async indexTransactions() {
     try {
-      const fetchTimer = this.timer.time("fetching");
       const transactionsData = await Promise.all(
         this.transactions.map(transaction =>
           this.fetchTransactionData(transaction)
         )
       );
-      fetchTimer.stop();
       const indexTimer = this.timer.time("indexing");
       await this.indexAsTransactions(transactionsData);
       await this.indexAsFromTransactions(transactionsData);
@@ -134,19 +132,25 @@ export default class TransactionIndexer {
   }
 
   async fetchTransactionData(transaction) {
-    const timer = this.timer.time("fetchTransactionData");
+    let timer = this.timer.time("fetchFromAddress");
     transaction.from = await this.db
       .pg("addresses")
       .where({ address: transaction.from_address })
       .first();
+    timer.stop();
+    timer = this.timer.time("fetchToAddress");
     transaction.to = await this.db
       .pg("addresses")
       .where({ address: transaction.to_address })
       .first();
+    timer.stop();
+    timer = this.timer.time("fetchBlock");
     transaction.block = await this.db
       .pg("blocks")
       .where({ hash: transaction.block_hash })
       .first();
+    timer.stop();
+    timer = this.timer.time("fetchLogs");
     transaction.logs = await this.db
       .pg("logs")
       .where({ transaction_hash: transaction.hash });
