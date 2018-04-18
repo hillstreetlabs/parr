@@ -139,6 +139,84 @@ program
   });
 
 program
+  .command("reimport")
+  .description("reimport rows")
+  .option("-T, --type <type>", "type to re-import")
+  .action(async options => {
+    const { pg, redis } = initDb();
+    // Add blocks to redis for re-importing
+    if (!options.type || options.type === "blocks") {
+      let blocksResetCount = 0;
+      const blockCounter = new Spinner(`Reset ${blocksResetCount} blocks`);
+      blockCounter.start();
+      await inBatches(
+        pg("blocks"),
+        async blocks => {
+          await redis.saddAsync(
+            "blocks:to_import",
+            blocks.map(block => block.hash)
+          );
+          blocksResetCount += blocks.length;
+          blockCounter.message(`Reset ${blocksResetCount} blocks`);
+        },
+        5000
+      );
+      blockCounter.stop();
+      console.log(`Reset ${blocksResetCount} blocks for re-importing`);
+    }
+    // Add transactions to redis for re-importing
+    if (!options.type || options.type === "transactions") {
+      let transactionsResetCount = 0;
+      const transactionCounter = new Spinner(
+        `Reset ${transactionsResetCount} transactions`
+      );
+      transactionCounter.start();
+      await inBatches(
+        pg("transactions"),
+        async transactions => {
+          await redis.saddAsync(
+            "transactions:to_import",
+            transactions.map(transaction => transaction.hash)
+          );
+          transactionsResetCount += transactions.length;
+          transactionCounter.message(
+            `Reset ${transactionsResetCount} transactions`
+          );
+        },
+        5000
+      );
+      transactionCounter.stop();
+      console.log(
+        `Reset ${transactionsResetCount} transactions for re-importing`
+      );
+    }
+    // Add addresses to redis for re-importing
+    if (!options.type || options.type === "addresses") {
+      let addressesResetCount = 0;
+      const addressCounter = new Spinner(
+        `Reset ${addressesResetCount} addresses`
+      );
+      addressCounter.start();
+      await inBatches(
+        pg("addresses"),
+        async addresses => {
+          await redis.saddAsync(
+            "addresses:to_import",
+            addresses.map(address => address.address)
+          );
+          addressesResetCount += addresses.length;
+          addressCounter.message(`Reset ${addressesResetCount} addresses`);
+        },
+        5000
+      );
+      addressCounter.stop();
+      console.log(`Reset ${addressesResetCount} addresses for re-importing`);
+    }
+    pg.destroy();
+    redis.end(true);
+  });
+
+program
   .command("es:reset")
   .description("reset Elasticsearch")
   .option("-I, --index <n>", "index name to reset")
