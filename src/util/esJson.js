@@ -1,3 +1,5 @@
+import Eth from "ethjs";
+
 export const logJson = log => {
   return {
     address: log.data.address,
@@ -14,18 +16,46 @@ export const logJson = log => {
   };
 };
 
-export const addressJson = address => {
+export const weiJson = wei => {
+  const raw = wei.toString();
   return {
+    wei: parseFloat(raw),
+    eth: parseFloat(Eth.fromWei(raw, "ether")),
+    raw
+  };
+};
+
+export const tokenJson = token => {
+  const { name, symbol } = token;
+  return { name, symbol };
+};
+
+export const crowdsaleJson = crowdsale => {
+  return {
+    token: tokenJson(crowdsale.token),
+    rate: weiJson(crowdsale.weiRate),
+    raised: weiJson(crowdsale.weiRaised)
+  };
+};
+
+export const addressJson = address => {
+  const json = {
     type: "address",
     join_field: "address",
     address: address.address,
-    data: address.data,
     is_contract: address.bytecode != "0x",
     bytecode: address.bytecode,
     implements: address.implements || {},
     abi: address.abi,
     id: `address:${address.address}`
   };
+  if (address.data.token) {
+    json.token = tokenJson(address.data.token);
+  }
+  if (address.data.crowdsale) {
+    json.crowdsale = crowdsaleJson(address.data.crowdsale);
+  }
+  return json;
 };
 
 export const transactionJson = transaction => {
@@ -62,7 +92,7 @@ export const transactionJson = transaction => {
       ? addressJson(transaction.to)
       : { address: transaction.to_address },
     transaction_index: parseInt(transaction.data.transactionIndex),
-    value: parseFloat(transaction.data.value)
+    value: weiJson(transaction.data.value)
   };
 };
 

@@ -29,24 +29,35 @@ export const importAddress = async (db, address, customParams = {}) => {
   const bytecode = await withTimeout(db.web3.getCode(address), 5000);
   let data = {};
   if (implementsAbi(Metadata.abi, bytecode)) {
-    data.name = await getConstant(db.web3, address, Metadata.abi, "name");
-    data.symbol = await getConstant(db.web3, address, Metadata.abi, "symbol");
+    data.token = {};
+    data.token.name = await getConstant(db.web3, address, Metadata.abi, "name");
+    data.token.symbol = await getConstant(
+      db.web3,
+      address,
+      Metadata.abi,
+      "symbol"
+    );
   }
   if (implementsAbi(Crowdsale.abi, bytecode)) {
-    data.wallet = await getConstant(db.web3, address, Crowdsale.abi, "wallet");
-    data.rate = (await getConstant(
+    data.crowdsale = {};
+    data.crowdsale.wallet = await getConstant(
+      db.web3,
+      address,
+      Crowdsale.abi,
+      "wallet"
+    );
+    data.crowdsale.weiRate = (await getConstant(
       db.web3,
       address,
       Crowdsale.abi,
       "rate"
-    )).toNumber();
-    const weiRaised = await getConstant(
+    )).toString();
+    data.crowdsale.weiRaised = (await getConstant(
       db.web3,
       address,
       Crowdsale.abi,
       "weiRaised"
-    );
-    data.ethRaised = parseFloat(Eth.fromWei(weiRaised, "ether"));
+    )).toString();
     const tokenAddress = await getConstant(
       db.web3,
       address,
@@ -66,7 +77,7 @@ export const importAddress = async (db, address, customParams = {}) => {
         Metadata.abi,
         "symbol"
       );
-      data.token = { name, symbol, address: tokenAddress };
+      data.crowdsale.token = { name, symbol, address: tokenAddress };
     }
   }
   const addressJson = {

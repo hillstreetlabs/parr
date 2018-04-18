@@ -74,9 +74,9 @@ export default class BlockImporter {
         );
       await this.db.redis.saddAsync("blocks:to_index", blockHash);
       console.log(
-        `Imported block: ${block.number.toString()}\tHash: ${blockHash}\tAdded ${
-          transactionHashes.length
-        } txns`
+        `Imported block: ${block.number.toString()}\tHash: ${
+          blockHash
+        }\tAdded ${transactionHashes.length} txns`
       );
       return true;
     } catch (err) {
