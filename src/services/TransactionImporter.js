@@ -24,7 +24,12 @@ const getInternalTransactions = async (web3, transactionHash) => {
         (err, res) => {
           if (res.result !== undefined) {
             resolve(
-              res.result.trace.filter(trace => trace.traceAddress.length > 0)
+              res.result.trace.filter(
+                trace =>
+                  trace.type === "create" ||
+                  (trace.action.value !== "0x0" &&
+                    trace.traceAddress.length > 0)
+              )
             );
           } else if (res.error && res.error.data === "TransactionNotFound") {
             reject(new Error("Transaction is not found"));
@@ -41,6 +46,7 @@ export default class TransactionImporter {
   @observable transactionCount = 0;
   @observable errorCount = 0;
   @observable logCount = 0;
+  @observable internalTransactionCount = 0;
   errors = [];
 
   constructor(db) {
@@ -176,8 +182,12 @@ export default class TransactionImporter {
     );
 
     return Promise.all(
-      internalTransactions.map((internalTransaction, transaction, index) => {
-        return this.importInternalTransaction(internalTransaction, index);
+      internalTransactions.map((internalTransaction, index) => {
+        return this.importInternalTransaction(
+          internalTransaction,
+          transaction,
+          index
+        );
       })
     );
   }
@@ -199,9 +209,10 @@ export default class TransactionImporter {
       transaction_hash: transaction.hash,
       internal_transaction_index: index,
       from_address: internalTransaction.action.from,
-      to_address: internalTransaction.action.to,
+      to_address:
+        internalTransaction.action.to || internalTransaction.result.address,
       data: {
-        callType: internalTransaction.type,
+        type: internalTransaction.type,
         value: transaction.value.toString(10),
         gas: internalTransaction.action.gas.toString(10),
         gasUsed: internalTransaction.result.gasUsed.toString(10)
@@ -263,6 +274,7 @@ export default class TransactionImporter {
     new Line(outputBuffer)
       .column("Transactions", 13)
       .column("Logs", 13)
+      .column("Int Txns", 13)
       .column("Errors", 7)
       .fill()
       .store();
@@ -275,6 +287,12 @@ export default class TransactionImporter {
       )
       .column(
         `${this.logCount} (${Math.floor(this.logCount / totalSeconds)}/s)`,
+        13
+      )
+      .column(
+        `${this.internalTransactionCount} (${Math.floor(
+          this.internalTransactionCount / totalSeconds
+        )}/s)`,
         13
       )
       .column(`${this.errorCount}`, 7)

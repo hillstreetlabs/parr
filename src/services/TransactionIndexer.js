@@ -87,6 +87,7 @@ export default class TransactionIndexer {
       transaction.routing = `block:${transaction.block_hash}`;
       return transactionJson(transaction);
     });
+
     const indexed = await this.db.elasticsearch.bulkIndex(
       "parr_blocks_transactions",
       transactionsJson
@@ -165,11 +166,26 @@ export default class TransactionIndexer {
       return byHash;
     }, {});
 
+    // Fetch all internal transactions
+    const internalTransactions = await this.db
+      .pg("internal_transactions")
+      .whereIn("transaction_hash", transactionHashes);
+    const internalTransactionsByTransactionHash = internalTransactions.reduce(
+      (byHash, internalTxn) => {
+        if (!byHash[internalTxn.transaction_hash])
+          byHash[internalTxn.transaction_hash] = [];
+        byHash[internalTxn.transaction_hash].push(internalTxn);
+        return byHash;
+      },
+      {}
+    );
+
     this.transactions.forEach(tx => {
       tx.from = addressesByHash[tx.from_address];
       tx.to = addressesByHash[tx.to_address];
       tx.block = blocksByHash[tx.block_hash];
       tx.logs = logsByTransactionHash[tx.hash];
+      tx.internalTransactions = internalTransactionsByTransactionHash[tx.hash];
     });
   }
 
