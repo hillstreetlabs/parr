@@ -304,4 +304,48 @@ program
     }
   });
 
+const getInternalTransactions = async (web3, transactionHash) => {
+  return new Promise((resolve, reject) => {
+    try {
+      web3.rpc.currentProvider.sendAsync(
+        {
+          jsonrpc: "2.0",
+          id: "1",
+          method: "trace_replayTransaction",
+          params: [transactionHash, ["trace"]]
+        },
+        (err, res) => {
+          if (res.result !== undefined) {
+            resolve(
+              res.result.trace.filter(trace => trace.traceAddress.length > 0)
+            );
+          } else if (res.error && res.error.data === "TransactionNotFound") {
+            reject(new Error("Transaction is not found"));
+          } else resolve([]);
+        }
+      );
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+program.command("test").action(async options => {
+  const { parity, pg, redis } = initDb();
+  // const results = await getInternalTransactions(
+  //   parity,
+  //   "0x218651412101c68079b2e1a91e9b9c69c4269107a00c88c4c5cee249af7f2d7e"
+  // );
+  let array1 = [{ object: "mert" }, { object: "celebi" }];
+
+  let test = array1.forEach(element => {
+    console.log(element.object);
+    element.test = "test";
+    return element;
+  });
+  console.log(test);
+  pg.destroy();
+  redis.end(true);
+});
+
 program.parse(process.argv);

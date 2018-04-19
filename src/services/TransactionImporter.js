@@ -11,6 +11,32 @@ import genericEventsAbi from "../../contracts/Events.json";
 const BATCH_SIZE = 50;
 const DELAY = 5000;
 
+const getInternalTransactions = async (web3, transactionHash) => {
+  return new Promise((resolve, reject) => {
+    try {
+      web3.rpc.currentProvider.sendAsync(
+        {
+          jsonrpc: "2.0",
+          id: "1",
+          method: "trace_replayTransaction",
+          params: [transactionHash, ["trace"]]
+        },
+        (err, res) => {
+          if (res.result !== undefined) {
+            resolve(
+              res.result.trace.filter(trace => trace.traceAddress.length > 0)
+            );
+          } else if (res.error && res.error.data === "TransactionNotFound") {
+            reject(new Error("Transaction is not found"));
+          } else resolve([]);
+        }
+      );
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
 export default class TransactionImporter {
   @observable transactionCount = 0;
   @observable errorCount = 0;
@@ -90,7 +116,8 @@ export default class TransactionImporter {
       if (!fromAddress)
         await this.db.redis.saddAsync("addresses:to_import", transaction.from);
 
-      const logs = await this.importLogs(to, receipt.logs);
+      await this.importLogs(to, receipt.logs);
+      await this.importInternalTransactions(transaction);
 
       await upsert(
         this.db.pg,
@@ -140,6 +167,46 @@ export default class TransactionImporter {
     );
     this.logCount++;
     return saved;
+  }
+
+  async importInternalTransactions(transaction) {
+    const internalTransactions = await getInternalTransactions(
+      this.db.parity,
+      transaction.hash
+    );
+
+    return Promise.all(
+      internalTransactions.map((internalTransaction, transaction, index) => {
+        return this.importInternalTransaction(internalTransaction, index);
+      })
+    );
+  }
+
+  async importInternalTransaction(internalTransaction, transaction, index) {
+    const saved = await upsert(
+      this.db.pg,
+      "internal_transactions",
+      this.internalTransactionJson(internalTransaction, transaction, index),
+      "(transaction_hash, internal_transaction_index)"
+    );
+    this.internalTransactionCount++;
+    return saved;
+  }
+
+  internalTransactionJson(internalTransaction, transaction, index) {
+    return {
+      block_hash: transaction.blockHash,
+      transaction_hash: transaction.hash,
+      internal_transaction_index: index,
+      from_address: internalTransaction.action.from,
+      to_address: internalTransaction.action.to,
+      data: {
+        callType: internalTransaction.type,
+        value: transaction.value.toString(10),
+        gas: internalTransaction.action.gas.toString(10),
+        gasUsed: internalTransaction.result.gasUsed.toString(10)
+      }
+    };
   }
 
   logJson(log, decoded = {}) {
