@@ -10,7 +10,10 @@ export default ({ config, db }) => {
     try {
       const response = await db.elasticsearch.client.search({
         index: "parr_monitoring",
-        body: { query: { match_all: {} } }
+        body: {
+          size: 100,
+          query: { match_all: {} }
+        }
       });
       res.json({ response });
     } catch (error) {
