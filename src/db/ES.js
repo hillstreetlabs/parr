@@ -59,7 +59,7 @@ export const INDICES = [
                 type: "keyword",
                 normalizer: "lowercase_normalizer"
               },
-              value: { type: "double" }
+              value: { properties: weiMapping }
             }
           },
           value: { properties: weiMapping },

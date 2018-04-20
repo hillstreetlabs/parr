@@ -5,16 +5,50 @@ import withTimeout from "../util/withTimeout";
 import { Line, LineBuffer, Clear } from "clui";
 import { observable, autorun } from "mobx";
 import createTimer from "../util/createTimer";
+import rpcCall from "../util/rpcCall";
 import { importAddress } from "./AddressImporter";
 import genericEventsAbi from "../../contracts/Events.json";
 
 const BATCH_SIZE = 50;
 const DELAY = 5000;
 
+const getInternalTransactions = async (web3, transactionHash) => {
+  return new Promise((resolve, reject) => {
+    try {
+      web3.rpc.currentProvider.sendAsync(
+        {
+          jsonrpc: "2.0",
+          id: "1",
+          method: "trace_replayTransaction",
+          params: [transactionHash, ["trace"]]
+        },
+        (err, res) => {
+          if (res.result !== undefined) {
+            resolve(
+              res.result.trace.filter(
+                trace =>
+                  trace.type === "create" ||
+                  (trace.action.value !== "0x0" &&
+                    trace.traceAddress.length > 0)
+              )
+            );
+          } else if (res.error && res.error.data === "TransactionNotFound") {
+            // TransactionNotFound suggests the node is not up-to-date, try again
+            reject(new Error("Transaction is not found"));
+          } else resolve([]);
+        }
+      );
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
 export default class TransactionImporter {
   @observable transactionCount = 0;
   @observable errorCount = 0;
   @observable logCount = 0;
+  @observable internalTransactionCount = 0;
   errors = [];
 
   constructor(db) {
@@ -29,6 +63,9 @@ export default class TransactionImporter {
   async run() {
     if (this.isExiting) return;
     this.transactionHashes = await this.getTransactionHashes();
+    this.internalTransactionsByTransactionHash = await this.getInternalTransactionsByTransactionHash(
+      this.transactionHashes
+    );
     if (this.transactionHashes.length > 0) {
       await this.importTransactions();
       this.run();
@@ -54,6 +91,33 @@ export default class TransactionImporter {
 
   getTransactionHashes() {
     return this.db.redis.spopAsync("transactions:to_import", BATCH_SIZE);
+  }
+
+  async getInternalTransactionsByTransactionHash(txnHashes) {
+    const txnHashesToInternalTxns = txnHashes.reduce((byHash, value) => {
+      byHash[value] = [];
+      return byHash;
+    }, {});
+
+    await Promise.all(
+      txnHashes.map(async hash => {
+        try {
+          txnHashesToInternalTxns[hash] = await getInternalTransactions(
+            this.db.parity,
+            hash
+          );
+        } catch (error) {
+          // Error: Remove transactionHash from transactionHashes and unlock
+          this.errorCount++;
+          this.errors.push(error);
+          txnHashesToInternalTxns[hash] = [];
+          await this.unlockTransaction(hash);
+          this.transactionHashes.splice(hash, 1);
+        }
+      })
+    );
+
+    return txnHashesToInternalTxns;
   }
 
   async importTransactions() {
@@ -90,7 +154,8 @@ export default class TransactionImporter {
       if (!fromAddress)
         await this.db.redis.saddAsync("addresses:to_import", transaction.from);
 
-      const logs = await this.importLogs(to, receipt.logs);
+      await this.importLogs(to, receipt.logs);
+      await this.importInternalTransactions(transaction);
 
       await upsert(
         this.db.pg,
@@ -140,6 +205,50 @@ export default class TransactionImporter {
     );
     this.logCount++;
     return saved;
+  }
+
+  async importInternalTransactions(transaction) {
+    const internalTransactions = this.internalTransactionsByTransactionHash[
+      transaction.hash
+    ];
+
+    return Promise.all(
+      internalTransactions.map((internalTransaction, index) => {
+        return this.importInternalTransaction(
+          internalTransaction,
+          transaction,
+          index
+        );
+      })
+    );
+  }
+
+  async importInternalTransaction(internalTransaction, transaction, index) {
+    const saved = await upsert(
+      this.db.pg,
+      "internal_transactions",
+      this.internalTransactionJson(internalTransaction, transaction, index),
+      "(transaction_hash, internal_transaction_index)"
+    );
+    this.internalTransactionCount++;
+    return saved;
+  }
+
+  internalTransactionJson(internalTransaction, transaction, index) {
+    return {
+      block_hash: transaction.blockHash,
+      transaction_hash: transaction.hash,
+      internal_transaction_index: index,
+      from_address: internalTransaction.action.from,
+      to_address:
+        internalTransaction.action.to || internalTransaction.result.address,
+      data: {
+        type: internalTransaction.type,
+        value: transaction.value.toString(10),
+        gas: internalTransaction.action.gas.toString(10),
+        gasUsed: internalTransaction.result.gasUsed.toString(10)
+      }
+    };
   }
 
   logJson(log, decoded = {}) {
@@ -196,6 +305,7 @@ export default class TransactionImporter {
     new Line(outputBuffer)
       .column("Transactions", 13)
       .column("Logs", 13)
+      .column("Int Txns", 13)
       .column("Errors", 7)
       .fill()
       .store();
@@ -208,6 +318,12 @@ export default class TransactionImporter {
       )
       .column(
         `${this.logCount} (${Math.floor(this.logCount / totalSeconds)}/s)`,
+        13
+      )
+      .column(
+        `${this.internalTransactionCount} (${Math.floor(
+          this.internalTransactionCount / totalSeconds
+        )}/s)`,
         13
       )
       .column(`${this.errorCount}`, 7)

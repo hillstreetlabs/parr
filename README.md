@@ -1,6 +1,6 @@
 <img width="35%" src="https://github.com/hillstreetlabs/parr-web/blob/master/src/assets/images/logo.png" />
 
----------
+---
 
 Index the Ethereum blockchain to search more intelligently.
 
@@ -35,7 +35,7 @@ node_modules/.bin/babel-node src/cli reset
 Import a block via the CLI:
 
 ```
-yarn cli import -B 5311100
+yarn cli blocks:add -B 5311100
 ```
 
 To start your development environment, run:
