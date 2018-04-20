@@ -5,7 +5,6 @@ import withTimeout from "../util/withTimeout";
 import { Line, LineBuffer, Clear } from "clui";
 import { observable, autorun } from "mobx";
 import createTimer from "../util/createTimer";
-import rpcCall from "../util/rpcCall";
 import { importAddress } from "./AddressImporter";
 import genericEventsAbi from "../../contracts/Events.json";
 
