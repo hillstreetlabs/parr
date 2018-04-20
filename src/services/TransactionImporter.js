@@ -33,6 +33,7 @@ const getInternalTransactions = async (web3, transactionHash) => {
               )
             );
           } else if (res.error && res.error.data === "TransactionNotFound") {
+            // TransactionNotFound suggests the node is not up-to-date, try again
             reject(new Error("Transaction is not found"));
           } else resolve([]);
         }
@@ -93,29 +94,30 @@ export default class TransactionImporter {
   }
 
   async getInternalTransactionsByTransactionHash(txnHashes) {
-    const hashesToInternalTransactions = txnHashes.reduce((byHash, hash) => {
-      byHash[hash] = [];
+    const txnHashesToInternalTxns = txnHashes.reduce((byHash, value) => {
+      byHash[value] = [];
       return byHash;
     }, {});
 
     await Promise.all(
-      txnHashes.map(async (hash, index) => {
+      txnHashes.map(async hash => {
         try {
-          hashesToInternalTransactions[hash] = await getInternalTransactions(
+          txnHashesToInternalTxns[hash] = await getInternalTransactions(
             this.db.parity,
-            txnHashes[index]
+            hash
           );
         } catch (error) {
+          // Error: Remove transactionHash from transactionHashes and unlock
           this.errorCount++;
           this.errors.push(error);
-          hashesToInternalTransactions[hash] = [];
+          txnHashesToInternalTxns[hash] = [];
           await this.unlockTransaction(hash);
           this.transactionHashes.splice(hash, 1);
         }
       })
     );
 
-    return hashesToInternalTransactions;
+    return txnHashesToInternalTxns;
   }
 
   async importTransactions() {
