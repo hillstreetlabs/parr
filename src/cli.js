@@ -20,6 +20,8 @@ import AddressImporter from "./services/AddressImporter";
 import AddressIndexer from "./services/AddressIndexer";
 
 import StatsMonitor from "./services/StatsMonitor";
+import createTimer from "./util/createTimer";
+import withTimeout from "./util/withTimeout";
 
 program
   .command("blocks:add")

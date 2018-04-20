@@ -5,6 +5,7 @@ import withTimeout from "../util/withTimeout";
 import { Line, LineBuffer, Clear } from "clui";
 import { observable, autorun } from "mobx";
 import createTimer from "../util/createTimer";
+import rpcCall from "../util/rpcCall";
 import { importAddress } from "./AddressImporter";
 import genericEventsAbi from "../../contracts/Events.json";
 
@@ -61,6 +62,9 @@ export default class TransactionImporter {
   async run() {
     if (this.isExiting) return;
     this.transactionHashes = await this.getTransactionHashes();
+    this.internalTransactionsByTransactionHash = await this.getInternalTransactionsByTransactionHash(
+      this.transactionHashes
+    );
     if (this.transactionHashes.length > 0) {
       await this.importTransactions();
       this.run();
@@ -86,6 +90,32 @@ export default class TransactionImporter {
 
   getTransactionHashes() {
     return this.db.redis.spopAsync("transactions:to_import", BATCH_SIZE);
+  }
+
+  async getInternalTransactionsByTransactionHash(txnHashes) {
+    const hashesToInternalTransactions = txnHashes.reduce((byHash, hash) => {
+      byHash[hash] = [];
+      return byHash;
+    }, {});
+
+    await Promise.all(
+      txnHashes.map(async (hash, index) => {
+        try {
+          hashesToInternalTransactions[hash] = await getInternalTransactions(
+            this.db.parity,
+            txnHashes[index]
+          );
+        } catch (error) {
+          this.errorCount++;
+          this.errors.push(error);
+          hashesToInternalTransactions[hash] = [];
+          await this.unlockTransaction(hash);
+          this.transactionHashes.splice(hash, 1);
+        }
+      })
+    );
+
+    return hashesToInternalTransactions;
   }
 
   async importTransactions() {
@@ -176,10 +206,9 @@ export default class TransactionImporter {
   }
 
   async importInternalTransactions(transaction) {
-    const internalTransactions = await getInternalTransactions(
-      this.db.parity,
+    const internalTransactions = this.internalTransactionsByTransactionHash[
       transaction.hash
-    );
+    ];
 
     return Promise.all(
       internalTransactions.map((internalTransaction, index) => {
