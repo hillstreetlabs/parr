@@ -185,7 +185,7 @@ export default class TransactionIndexer {
       tx.to = addressesByHash[tx.to_address];
       tx.block = blocksByHash[tx.block_hash];
       tx.logs = logsByTransactionHash[tx.hash];
-      tx.internalTransactions = internalTransactionsByTransactionHash[tx.hash];
+      tx.internal_transactions = internalTransactionsByTransactionHash[tx.hash];
     });
   }
 

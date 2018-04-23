@@ -62,9 +62,6 @@ export default class TransactionImporter {
   async run() {
     if (this.isExiting) return;
     this.transactionHashes = await this.getTransactionHashes();
-    this.internalTransactionsByTransactionHash = await this.getInternalTransactionsByTransactionHash(
-      this.transactionHashes
-    );
     if (this.transactionHashes.length > 0) {
       await this.importTransactions();
       this.run();
@@ -92,16 +89,13 @@ export default class TransactionImporter {
     return this.db.redis.spopAsync("transactions:to_import", BATCH_SIZE);
   }
 
-  async getInternalTransactionsByTransactionHash(txnHashes) {
-    const txnHashesToInternalTxns = txnHashes.reduce((byHash, value) => {
-      byHash[value] = [];
-      return byHash;
-    }, {});
+  async getInternalTransactionsByTransactionHash(transactionHashes) {
+    const transactionHashesToInternalTxns = {};
 
     await Promise.all(
-      txnHashes.map(async hash => {
+      transactionHashes.map(async hash => {
         try {
-          txnHashesToInternalTxns[hash] = await getInternalTransactions(
+          transactionHashesToInternalTxns[hash] = await getInternalTransactions(
             this.db.parity,
             hash
           );
@@ -109,25 +103,31 @@ export default class TransactionImporter {
           // Error: Remove transactionHash from transactionHashes and unlock
           this.errorCount++;
           this.errors.push(error);
-          txnHashesToInternalTxns[hash] = [];
+          transactionHashesToInternalTxns[hash] = [];
           await this.unlockTransaction(hash);
           this.transactionHashes.splice(hash, 1);
         }
       })
     );
 
-    return txnHashesToInternalTxns;
+    return transactionHashesToInternalTxns;
   }
 
   async importTransactions() {
+    const internalTransactionsByTransactionHash = await this.getInternalTransactionsByTransactionHash(
+      this.transactionHashes
+    );
     await Promise.all(
       this.transactionHashes.map(hash => {
-        return this.importTransaction(hash);
+        return this.importTransaction(
+          hash,
+          internalTransactionsByTransactionHash[hash]
+        );
       })
     );
   }
 
-  async importTransaction(transactionHash) {
+  async importTransaction(transactionHash, internalTransactions) {
     try {
       const receipt = await withTimeout(
         this.db.web3.getTransactionReceipt(transactionHash),
@@ -154,7 +154,7 @@ export default class TransactionImporter {
         await this.db.redis.saddAsync("addresses:to_import", transaction.from);
 
       await this.importLogs(to, receipt.logs);
-      await this.importInternalTransactions(transaction);
+      await this.importInternalTransactions(internalTransactions, transaction);
 
       await upsert(
         this.db.pg,
@@ -206,11 +206,7 @@ export default class TransactionImporter {
     return saved;
   }
 
-  async importInternalTransactions(transaction) {
-    const internalTransactions = this.internalTransactionsByTransactionHash[
-      transaction.hash
-    ];
-
+  async importInternalTransactions(internalTransactions, transaction) {
     return Promise.all(
       internalTransactions.map((internalTransaction, index) => {
         return this.importInternalTransaction(

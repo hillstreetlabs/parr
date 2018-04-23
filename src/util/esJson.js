@@ -85,7 +85,7 @@ export const transactionJson = transaction => {
     gas_used: parseInt(transaction.receipt.gasUsed),
     hash: transaction.hash,
     id: `${type}:${transaction.hash}`,
-    internal_transactions: (transaction.internalTransactions || []).map(
+    internal_transactions: (transaction.internal_transactions || []).map(
       internalTransaction => {
         return internalTransactionJson(
           Object.assign(internalTransaction, { timestamp })
@@ -126,7 +126,7 @@ export const internalTransactionJson = internalTransaction => {
   return {
     block_hash: internalTransaction.block_hash,
     from: internalTransaction.from_address,
-    gas: parseInt(internalTransaction.data.gas),
+    gas: parseFloat(internalTransaction.data.gas),
     gas_used: parseFloat(internalTransaction.data.gasUsed),
     id: internalTransaction.id,
     internal_transaction_index: internalTransaction.internal_transaction_index,
