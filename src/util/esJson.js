@@ -126,7 +126,7 @@ export const internalTransactionJson = internalTransaction => {
   return {
     block_hash: internalTransaction.block_hash,
     from: internalTransaction.from_address,
-    gas: parseFloat(internalTransaction.data.gas),
+    gas: parseInt(internalTransaction.data.gas),
     gas_used: parseFloat(internalTransaction.data.gasUsed),
     id: internalTransaction.id,
     internal_transaction_index: internalTransaction.internal_transaction_index,

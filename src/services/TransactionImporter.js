@@ -13,33 +13,28 @@ const DELAY = 5000;
 
 const getInternalTransactions = async (web3, transactionHash) => {
   return new Promise((resolve, reject) => {
-    try {
-      web3.rpc.currentProvider.sendAsync(
-        {
-          jsonrpc: "2.0",
-          id: "1",
-          method: "trace_replayTransaction",
-          params: [transactionHash, ["trace"]]
-        },
-        (err, res) => {
-          if (res.result !== undefined) {
-            resolve(
-              res.result.trace.filter(
-                trace =>
-                  trace.type === "create" ||
-                  (trace.action.value !== "0x0" &&
-                    trace.traceAddress.length > 0)
-              )
-            );
-          } else if (res.error && res.error.data === "TransactionNotFound") {
-            // TransactionNotFound suggests the node is not up-to-date, try again
-            reject(new Error("Transaction is not found"));
-          } else resolve([]);
-        }
-      );
-    } catch (error) {
-      reject(error);
-    }
+    web3.rpc.currentProvider.sendAsync(
+      {
+        jsonrpc: "2.0",
+        id: "1",
+        method: "trace_replayTransaction",
+        params: [transactionHash, ["trace"]]
+      },
+      (err, res) => {
+        if (res.result !== undefined) {
+          resolve(
+            res.result.trace.filter(
+              trace =>
+                trace.traceAddress.length > 0 &&
+                (trace.type === "create" || trace.action.value !== "0x0")
+            )
+          );
+        } else if (res.error && res.error.data === "TransactionNotFound") {
+          // TransactionNotFound suggests the node is not up-to-date, try again
+          reject(new Error("Transaction is not found"));
+        } else resolve([]);
+      }
+    );
   });
 };
 
@@ -90,27 +85,25 @@ export default class TransactionImporter {
   }
 
   async getInternalTransactionsByTransactionHash(transactionHashes) {
-    const transactionHashesToInternalTxns = {};
+    const internalTransactionsByTransactionHash = {};
 
     await Promise.all(
       transactionHashes.map(async hash => {
         try {
-          transactionHashesToInternalTxns[hash] = await getInternalTransactions(
-            this.db.parity,
+          internalTransactionsByTransactionHash[
             hash
-          );
+          ] = await getInternalTransactions(this.db.parity, hash);
         } catch (error) {
           // Error: Remove transactionHash from transactionHashes and unlock
           this.errorCount++;
           this.errors.push(error);
-          transactionHashesToInternalTxns[hash] = [];
           await this.unlockTransaction(hash);
           this.transactionHashes.splice(hash, 1);
         }
       })
     );
 
-    return transactionHashesToInternalTxns;
+    return internalTransactionsByTransactionHash;
   }
 
   async importTransactions() {
@@ -238,7 +231,7 @@ export default class TransactionImporter {
       to_address:
         internalTransaction.action.to || internalTransaction.result.address,
       data: {
-        type: internalTransaction.type,
+        type: internalTransaction.action.type || internalTransaction.type,
         value: transaction.value.toString(10),
         gas: internalTransaction.action.gas.toString(10),
         gasUsed: internalTransaction.result.gasUsed.toString(10)
