@@ -85,7 +85,7 @@ export const transactionJson = transaction => {
     gas_used: parseInt(transaction.receipt.gasUsed),
     hash: transaction.hash,
     id: `${type}:${transaction.hash}`,
-    internal_transactions: (transaction.internalTransactions || []).map(
+    internal_transactions: (transaction.internal_transactions || []).map(
       internalTransaction => {
         return internalTransactionJson(
           Object.assign(internalTransaction, { timestamp })
@@ -124,18 +124,15 @@ export const blockJson = block => {
 
 export const internalTransactionJson = internalTransaction => {
   return {
+    block_hash: internalTransaction.block_hash,
     from: internalTransaction.from_address,
-    to: internalTransaction.to_address,
-    timestamp: internalTransaction.data.timestamp,
-    value: internalTransaction.data.value,
-    contract_address: internalTransaction.data.contractAddress,
-    input: internalTransaction.data.input,
+    gas: parseInt(internalTransaction.data.gas),
+    gas_used: parseFloat(internalTransaction.data.gasUsed),
     id: internalTransaction.id,
+    internal_transaction_index: internalTransaction.internal_transaction_index,
+    timestamp: internalTransaction.timestamp,
+    to: internalTransaction.to_address,
     type: internalTransaction.data.type,
-    gas: internalTransaction.data.gas,
-    gas_used: internalTransaction.data.gasUsed,
-    is_error: internalTransaction.data.isError,
-    err_code: internalTransaction.data.errCode,
-    block_number: internalTransaction.data.blockNumber
+    value: weiJson(internalTransaction.data.value)
   };
 };

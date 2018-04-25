@@ -21,6 +21,7 @@ promisifyRedis();
 // Returns an object with references to various databases
 export default () => {
   const web3 = new Eth(new HttpProvider(process.env.JSON_RPC_URL));
+  const parity = new Eth(new HttpProvider(process.env.PARITY_RPC_URL));
   const elasticsearch = new ES();
   const redis = Redis.createClient(process.env.REDIS_URL);
   const etherscan = Etherscan.init(process.env.ETHERSCAN_KEY);
@@ -28,5 +29,5 @@ export default () => {
 
   console.log("Started databases");
 
-  return { web3, elasticsearch, etherscan, pg, redis };
+  return { web3, elasticsearch, etherscan, pg, redis, parity };
 };
