@@ -98,7 +98,8 @@ export default class TransactionImporter {
           this.errorCount++;
           this.errors.push(error);
           await this.unlockTransaction(hash);
-          this.transactionHashes.splice(hash, 1);
+          const index = this.transactionHashes.indexOf(hash);
+          if (index > -1) this.transactionHashes.splice(index, 1);
         }
       })
     );
