@@ -201,7 +201,7 @@ export default class TransactionImporter {
 
   async importInternalTransactions(internalTransactions, transaction) {
     return Promise.all(
-      internalTransactions.map((internalTransaction, index) => {
+      (internalTransactions || []).map((internalTransaction, index) => {
         return this.importInternalTransaction(
           internalTransaction,
           transaction,
