@@ -304,6 +304,4 @@ program
     }
   });
 
-program.command("test").action(async options => {});
-
 program.parse(process.argv);
