@@ -20,25 +20,11 @@ Update your `.env` file according to the following format:
 
 ```
 // .env
-INFURA_NETWORK=mainnet
-INFURA_KEY=<Your Infura API Key>
+JSON_RPC_URL="<Your Ethereum node endpoint or Infura URL>"
 ELASTICSEARCH_URL="localhost:9200"
-ETHERSCAN_KEY=<Your Etherscan API Key>
 ```
 
-Reset your Elasticsearch instance via the CLI:
-
-```
-node_modules/.bin/babel-node src/cli reset
-```
-
-Import a block via the CLI:
-
-```
-yarn cli blocks:add -B 5311100
-```
-
-To start your development environment, run:
+Start the API server:
 
 ```
 yarn dev
